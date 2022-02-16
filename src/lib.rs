@@ -1,9 +1,9 @@
-use core::str::FromStr;
 use std::{
     error::Error,
     fmt::{Display, Formatter, Result as FmtResult},
     iter::once,
     num::{IntErrorKind, NonZeroUsize},
+    str::FromStr,
 };
 
 #[derive(Clone, Copy)]
@@ -73,12 +73,8 @@ pub struct Stack {
 }
 
 impl Stack {
-    pub fn top_piece(&self) -> Piece {
+    pub fn top(&self) -> Piece {
         self.top
-    }
-
-    pub fn top_color(&self) -> Color {
-        *self.colors.split_last().unwrap().0
     }
 
     pub fn colors(&self) -> impl Iterator<Item = Color> + '_ {
@@ -114,7 +110,7 @@ impl FromStr for Stack {
 impl Display for Stack {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         self.colors().map(|c| c.fmt(f)).collect::<FmtResult>()?;
-        self.top_piece().fmt(f)
+        self.top().fmt(f)
     }
 }
 
@@ -125,8 +121,8 @@ enum ExtendedSquare {
 }
 
 impl ExtendedSquare {
-    pub fn iter(&self) -> ExtendedSquareIter {
-        ExtendedSquareIter::new(self)
+    pub fn iter(&self) -> Iter {
+        Iter::new(self)
     }
 }
 
@@ -165,19 +161,19 @@ impl Display for ExtendedSquare {
 impl<'a> IntoIterator for &'a ExtendedSquare {
     type Item = Option<&'a Stack>;
 
-    type IntoIter = ExtendedSquareIter<'a>;
+    type IntoIter = Iter<'a>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
     }
 }
 
-struct ExtendedSquareIter<'a> {
+struct Iter<'a> {
     pub item: Option<&'a Stack>,
     pub count: usize,
 }
 
-impl<'a> ExtendedSquareIter<'a> {
+impl<'a> Iter<'a> {
     pub fn new(es: &'a ExtendedSquare) -> Self {
         match es {
             ExtendedSquare::Stack(s) => Self {
@@ -189,7 +185,7 @@ impl<'a> ExtendedSquareIter<'a> {
     }
 }
 
-impl<'a> Iterator for ExtendedSquareIter<'a> {
+impl<'a> Iterator for Iter<'a> {
     type Item = Option<&'a Stack>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -214,7 +210,7 @@ impl<'a> Iterator for ExtendedSquareIter<'a> {
     }
 }
 
-impl<'a> ExactSizeIterator for ExtendedSquareIter<'a> {
+impl<'a> ExactSizeIterator for Iter<'a> {
     fn len(&self) -> usize {
         self.count
     }
@@ -227,13 +223,13 @@ pub struct Tps {
 }
 
 impl Tps {
-    pub fn board_2d<'a>(&'a self) -> impl Iterator<Item = impl Iterator<Item = Option<&'a Stack>>> {
+    pub fn board_2d(&self) -> impl Iterator<Item = impl Iterator<Item = Option<&'_ Stack>>> {
         self.board
             .iter()
             .map(|row| row.iter().flat_map(ExtendedSquare::iter))
     }
 
-    pub fn board<'a>(&'a self) -> impl Iterator<Item = Option<&'a Stack>> {
+    pub fn board(&self) -> impl Iterator<Item = Option<&'_ Stack>> {
         self.board_2d().flatten()
     }
 
@@ -257,20 +253,20 @@ impl Tps {
                 1
             }
     }
+}
 
-    pub fn optimize(&mut self) {
-        self.board.iter_mut().for_each(|row| {
-            row.dedup_by(|item, acc| {
-                if let ExtendedSquare::EmptySquares(acc) = acc {
-                    if let ExtendedSquare::EmptySquares(item) = item {
-                        *acc += *item;
-                        return true;
-                    }
+fn canonicalize(board: &mut Vec<Vec<ExtendedSquare>>) {
+    board.iter_mut().for_each(|row| {
+        row.dedup_by(|item, acc| {
+            if let ExtendedSquare::EmptySquares(acc) = acc {
+                if let ExtendedSquare::EmptySquares(item) = item {
+                    *acc += *item;
+                    return true;
                 }
-                false
-            })
-        });
-    }
+            }
+            false
+        })
+    });
 }
 
 impl FromStr for Tps {
@@ -291,7 +287,7 @@ impl FromStr for Tps {
         let rows: Vec<_> = board.split('/').collect();
         let size = rows.len();
 
-        let board = rows
+        let mut board = rows
             .into_iter()
             .map(|row| {
                 let row = row
@@ -306,6 +302,8 @@ impl FromStr for Tps {
                 }
             })
             .collect::<Result<Vec<_>, _>>()?;
+
+        canonicalize(&mut board);
 
         Ok(Tps {
             board,
@@ -352,7 +350,6 @@ pub enum ParseTpsError {
     InvalidRunLength,
     InvalidFullMove,
     NonSquareBoard,
-    Unknown,
 }
 
 impl Error for ParseTpsError {}
@@ -371,7 +368,6 @@ impl Display for ParseTpsError {
             InvalidRunLength => "malformed adjacent empty square count",
             InvalidFullMove => "malformed full move counter",
             NonSquareBoard => "length of board row different than column",
-            Unknown => "malformed tps string",
         }
         .fmt(f)
     }
@@ -387,13 +383,15 @@ mod tests {
         T: FromStr + Display,
         <T as FromStr>::Err: Debug,
     {
-        assert_eq!(s.parse::<T>().unwrap().to_string(), s);
+        transform::<T>(s, s);
     }
 
-    fn optimize(from: &str, to: &str) {
-        let mut tps: Tps = from.parse().unwrap();
-        tps.optimize();
-        assert_eq!(tps.to_string(), to);
+    fn transform<T>(from: &str, to: &str)
+    where
+        T: FromStr + Display,
+        <T as FromStr>::Err: Debug,
+    {
+        assert_eq!(from.parse::<T>().unwrap().to_string(), to);
     }
 
     #[test]
@@ -423,17 +421,17 @@ mod tests {
 
     #[test]
     fn unoptimized_start_position() {
-        optimize("x,x,x/x,x,x/x,x,x 1 1", "x3/x3/x3 1 1");
+        transform::<Tps>("x,x,x/x,x,x/x,x,x 1 1", "x3/x3/x3 1 1");
     }
 
     #[test]
     fn partially_optimized_start_position() {
-        optimize("x3,x/x,x,x,x/x4/x,x2,x 1 1", "x4/x4/x4/x4 1 1");
+        transform::<Tps>("x3,x/x,x,x,x/x4/x,x2,x 1 1", "x4/x4/x4/x4 1 1");
     }
 
     #[test]
     fn weird_position() {
-        optimize(
+        transform::<Tps>(
             "1111C,x,2122212221122111S,x/1221,2,22C,212S/x2,x,x1/x,1S,x,x 2 40",
             "1111C,x,2122212221122111S,x/1221,2,22C,212S/x4/x,1S,x2 2 40",
         );

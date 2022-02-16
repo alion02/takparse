@@ -6,7 +6,9 @@ use std::{
     str::FromStr,
 };
 
-#[derive(Clone, Copy)]
+// TODO: serde
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Piece {
     Flat,
     Wall,
@@ -37,7 +39,7 @@ impl Display for Piece {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Color {
     White,
     Black,
@@ -66,7 +68,7 @@ impl Display for Color {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Stack {
     top: Piece,
     colors: Vec<Color>,
@@ -114,7 +116,7 @@ impl Display for Stack {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum ExtendedSquare {
     Stack(Stack),
     EmptySquares(usize),
@@ -216,6 +218,7 @@ impl<'a> ExactSizeIterator for Iter<'a> {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Tps {
     board: Vec<Vec<ExtendedSquare>>,
     color: Color,
@@ -339,7 +342,7 @@ impl Display for Tps {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ParseTpsError {
     WrongSegmentCount,
     MissingColor,

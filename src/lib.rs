@@ -171,8 +171,8 @@ impl<'a> IntoIterator for &'a ExtendedSquare {
 }
 
 struct Iter<'a> {
-    pub item: Option<&'a Stack>,
-    pub count: usize,
+    item: Option<&'a Stack>,
+    count: usize,
 }
 
 impl<'a> Iter<'a> {

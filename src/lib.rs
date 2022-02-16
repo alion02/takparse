@@ -268,7 +268,8 @@ fn canonicalize(board: &mut Vec<Vec<ExtendedSquare>>) {
                 }
             }
             false
-        })
+        });
+        row.retain(|es| !matches!(es, ExtendedSquare::EmptySquares(0)));
     });
 }
 
@@ -287,7 +288,10 @@ impl FromStr for Tps {
             .parse()
             .map_err(|_| ParseTpsError::InvalidFullMove)?;
 
-        let rows: Vec<_> = board.split('/').collect();
+        let rows: Vec<_> = match board {
+            "" => return Err(ParseTpsError::MissingBoard),
+            _ => board.split('/').collect(),
+        };
         let size = rows.len();
 
         let mut board = rows
@@ -353,6 +357,7 @@ pub enum ParseTpsError {
     InvalidRunLength,
     InvalidFullMove,
     NonSquareBoard,
+    MissingBoard,
 }
 
 impl Error for ParseTpsError {}
@@ -371,6 +376,7 @@ impl Display for ParseTpsError {
             InvalidRunLength => "malformed adjacent empty square count",
             InvalidFullMove => "malformed full move counter",
             NonSquareBoard => "length of board row different than column",
+            MissingBoard => "received \"\" as board",
         }
         .fmt(f)
     }
@@ -379,64 +385,158 @@ impl Display for ParseTpsError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::{fmt::Debug, str::FromStr};
+    use std::{cmp::PartialEq, fmt::Debug, iter::repeat, str::FromStr};
+    use ParseTpsError::*;
 
-    fn round_trip<T>(s: &str)
-    where
-        T: FromStr + Display,
-        <T as FromStr>::Err: Debug,
-    {
-        transform::<T>(s, s);
+    fn round_trip<
+        'a,
+        T: FromStr<Err = ParseTpsError> + Display + Debug,
+        I: IntoIterator<Item = &'a str>,
+    >(
+        cases: I,
+    ) {
+        transform::<T, _>(cases.into_iter().map(|s| (s, s)));
     }
 
-    fn transform<T>(from: &str, to: &str)
-    where
-        T: FromStr + Display,
-        <T as FromStr>::Err: Debug,
-    {
-        assert_eq!(from.parse::<T>().unwrap().to_string(), to);
+    fn transform<
+        'a,
+        T: FromStr<Err = ParseTpsError> + Display + Debug,
+        I: IntoIterator<Item = (&'a str, &'a str)>,
+    >(
+        from_to_pairs: I,
+    ) {
+        from_to_pairs
+            .into_iter()
+            .for_each(|(from, to)| assert_eq!(from.parse::<T>().unwrap().to_string(), to));
+    }
+
+    fn error<
+        'a,
+        T: FromStr<Err = ParseTpsError> + PartialEq + Debug,
+        I: IntoIterator<Item = &'a str>,
+    >(
+        cases: I,
+        err: ParseTpsError,
+    ) {
+        cases
+            .into_iter()
+            .for_each(|s| assert_eq!(s.parse::<T>(), Err(err)));
+    }
+
+    #[test]
+    fn piece() {
+        round_trip::<Piece, _>(["S", "C"]);
+    }
+
+    #[test]
+    fn not_piece() {
+        error::<Piece, _>(["1", "2", "F", "s", "c", "f", "thing"], InvalidPiece);
+        error::<Piece, _>([""], MissingPiece);
+    }
+
+    #[test]
+    fn color() {
+        round_trip::<Color, _>(["1", "2"]);
+    }
+
+    #[test]
+    fn not_color() {
+        error::<Color, _>(
+            ["3", "12", "white", "w", "W", "blarg", "ą", "I"],
+            InvalidColor,
+        );
+        error::<Color, _>([""], MissingColor);
     }
 
     #[test]
     fn stack() {
-        round_trip::<ExtendedSquare>("1121S");
+        round_trip::<Stack, _>(["1", "2", "1S", "2C", "11211221", "22221C"]);
     }
 
     #[test]
-    fn flat_stack() {
-        round_trip::<ExtendedSquare>("212211");
+    fn not_stack() {
+        error::<Stack, _>(["123", "12P", "hi", "a", "1SC"], InvalidPiece);
+        error::<Stack, _>(["", "S", "C"], MissingColorOfPiece);
     }
 
     #[test]
-    fn empty_squares() {
-        round_trip::<ExtendedSquare>("x3");
+    fn ext_square() {
+        round_trip::<ExtendedSquare, _>(["121S", "112", "x", "x0", "x4", "x213", "x1221"]);
+        transform::<ExtendedSquare, _>([("x1", "x")]);
     }
 
     #[test]
-    fn one_empty_square() {
-        round_trip::<ExtendedSquare>("x");
+    fn not_ext_square() {
+        error::<ExtendedSquare, _>(["x_two", "xF", "xS", "x "], InvalidRunLength);
+    }
+
+    fn start_position_tps(s: usize) -> String {
+        let row = format!("x{s}");
+        format!("{} 1 1", repeat(row).take(s).collect::<Vec<_>>().join("/"))
+    }
+
+    fn alt_start_position_tps(s: usize) -> String {
+        let tile = "x";
+        format!(
+            "{} 1 1",
+            repeat(repeat(tile).take(s).collect::<Vec<_>>().join(","))
+                .take(s)
+                .collect::<Vec<_>>()
+                .join("/")
+        )
     }
 
     #[test]
-    fn start_position() {
-        round_trip::<Tps>("x5/x5/x5/x5/x5 1 1");
+    fn standard_start_positions() {
+        round_trip::<Tps, _>(
+            (3..9)
+                .map(start_position_tps)
+                .collect::<Vec<_>>()
+                .iter()
+                .map(String::as_str),
+        );
     }
 
     #[test]
-    fn unoptimized_start_position() {
-        transform::<Tps>("x,x,x/x,x,x/x,x,x 1 1", "x3/x3/x3 1 1");
+    fn unopt_standard_start_positions() {
+        transform::<Tps, _>(
+            (3..9)
+                .map(|s| (alt_start_position_tps(s), start_position_tps(s)))
+                .collect::<Vec<_>>()
+                .iter()
+                .map(|(from, to)| (from.as_str(), to.as_str())),
+        );
     }
 
     #[test]
-    fn partially_optimized_start_position() {
-        transform::<Tps>("x3,x/x,x,x,x/x4/x,x2,x 1 1", "x4/x4/x4/x4 1 1");
+    fn nonstandard_start_positions() {
+        round_trip::<Tps, _>(["x2/x2 1 1"]);
+        transform::<Tps, _>([("x1 1 1", "x 1 1")]);
     }
 
     #[test]
-    fn weird_position() {
-        transform::<Tps>(
-            "1111C,x,2122212221122111S,x/1221,2,22C,212S/x2,x,x1/x,1S,x,x 2 40",
-            "1111C,x,2122212221122111S,x/1221,2,22C,212S/x4/x,1S,x2 2 40",
+    fn tps() {
+        transform::<Tps, _>([
+            ("x3,x/x,x,x,x/x4/x,x2,x 1 1", "x4/x4/x4/x4 1 1"),
+            (
+                "1111C,x,2122212221122111S,x/1221,x0,x0,2,x0,22C,212S/x2,x,x1/x,1S,x,x 2 40",
+                "1111C,x,2122212221122111S,x/1221,2,22C,212S/x4/x,1S,x2 2 40",
+            ),
+        ])
+    }
+
+    #[test]
+    fn not_tps() {
+        error::<Tps, _>(
+            ["", "x2/x2 1 1 ", " x2/x2 1 1", "1 4", "x2/x2 2"],
+            WrongSegmentCount,
+        );
+        error::<Tps, _>(["x2/x2 w 1"], InvalidColor);
+        error::<Tps, _>(["x2/x2 1 1.5"], InvalidFullMove);
+        error::<Tps, _>([" 2 14"], MissingBoard);
+        error::<Tps, _>(
+            ["x/x 1 1", "x3/x3 1 1", "1,2,1C/x2/1112S,1S,x 1 9", "x0 1 1"],
+            NonSquareBoard,
         );
     }
 }

@@ -395,22 +395,22 @@ mod tests {
     }
 
     #[test]
-    fn format_stack() {
+    fn stack() {
         round_trip::<ExtendedSquare>("1121S");
     }
 
     #[test]
-    fn format_flat_stack() {
+    fn flat_stack() {
         round_trip::<ExtendedSquare>("212211");
     }
 
     #[test]
-    fn format_empty_squares() {
+    fn empty_squares() {
         round_trip::<ExtendedSquare>("x3");
     }
 
     #[test]
-    fn format_one_empty_square() {
+    fn one_empty_square() {
         round_trip::<ExtendedSquare>("x");
     }
 

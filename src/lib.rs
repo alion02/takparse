@@ -6,7 +6,7 @@ use std::{
     str::FromStr,
 };
 
-// TODO: serde
+// TODO: serde, docs, tests
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Piece {

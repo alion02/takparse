@@ -82,6 +82,14 @@ impl Stack {
     pub fn colors(&self) -> impl Iterator<Item = Color> + '_ {
         self.colors.iter().copied()
     }
+
+    pub fn top_color(&self) -> Color {
+        *self.colors.last().unwrap()
+    }
+
+    pub fn bottom_color(&self) -> Color {
+        *self.colors.first().unwrap()
+    }
 }
 
 impl FromStr for Stack {

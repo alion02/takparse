@@ -111,7 +111,7 @@ impl FromStr for Stack {
 
 impl Display for Stack {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        self.colors().map(|c| c.fmt(f)).collect::<FmtResult>()?;
+        self.colors().try_for_each(|c| c.fmt(f))?;
         self.top().fmt(f)
     }
 }
@@ -325,7 +325,7 @@ impl Display for Tps {
         let fmt_row = |row: &Vec<ExtendedSquare>, f: &mut Formatter<'_>| {
             if let Some(es) = row.get(0) {
                 es.fmt(f)?;
-                row[1..].iter().map(|es| write!(f, ",{es}")).collect()
+                row[1..].iter().try_for_each(|es| write!(f, ",{es}"))
             } else {
                 Ok(())
             }
@@ -333,13 +333,10 @@ impl Display for Tps {
 
         if let Some(row) = self.board.get(0) {
             fmt_row(row, f)?;
-            self.board[1..]
-                .iter()
-                .map(|row| {
-                    '/'.fmt(f)?;
-                    fmt_row(row, f)
-                })
-                .collect::<FmtResult>()?;
+            self.board[1..].iter().try_for_each(|row| {
+                '/'.fmt(f)?;
+                fmt_row(row, f)
+            })?;
         }
 
         write!(f, " {} {}", self.color(), self.full_move())

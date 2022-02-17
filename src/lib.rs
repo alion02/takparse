@@ -277,7 +277,7 @@ fn canonicalize(board: &mut Vec<Vec<ExtendedSquare>>) {
             }
             false
         });
-        row.retain(|es| !matches!(es, ExtendedSquare::EmptySquares(0)));
+        row.retain(|es| *es != ExtendedSquare::EmptySquares(0));
     });
 }
 

@@ -1,7 +1,7 @@
 use std::{
     error::Error,
     fmt::{Display, Formatter, Result as FmtResult},
-    iter::once,
+    iter::{once, repeat},
     num::{IntErrorKind, NonZeroUsize},
     str::FromStr,
 };
@@ -264,6 +264,18 @@ impl Tps {
                 1
             }
     }
+
+    pub fn starting_position(size: usize) -> Self {
+        start_position_tps(size).parse().unwrap()
+    }
+}
+
+fn start_position_tps(size: usize) -> String {
+    let row = format!("x{size}");
+    format!(
+        "{} 1 1",
+        repeat(row).take(size).collect::<Vec<_>>().join("/")
+    )
 }
 
 fn canonicalize(board: &mut Vec<Vec<ExtendedSquare>>) {
@@ -296,29 +308,31 @@ impl FromStr for Tps {
             .parse()
             .map_err(|_| ParseTpsError::InvalidFullMove)?;
 
-        let rows: Vec<_> = match board {
-            "" => return Err(ParseTpsError::MissingBoard),
-            _ => board.split('/').collect(),
+        let board = if board == "" {
+            vec![]
+        } else {
+            let rows: Vec<_> = board.split('/').collect();
+            let size = rows.len();
+
+            let mut board = rows
+                .into_iter()
+                .map(|row| {
+                    let row = row
+                        .split(',')
+                        .map(ExtendedSquare::from_str)
+                        .collect::<Result<Vec<_>, _>>()?;
+
+                    if row.iter().map(|es| es.iter().len()).sum::<usize>() == size {
+                        Ok(row)
+                    } else {
+                        Err(ParseTpsError::NonSquareBoard)
+                    }
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+
+            canonicalize(&mut board);
+            board
         };
-        let size = rows.len();
-
-        let mut board = rows
-            .into_iter()
-            .map(|row| {
-                let row = row
-                    .split(',')
-                    .map(ExtendedSquare::from_str)
-                    .collect::<Result<Vec<_>, _>>()?;
-
-                if row.iter().map(|es| es.iter().len()).sum::<usize>() == size {
-                    Ok(row)
-                } else {
-                    Err(ParseTpsError::NonSquareBoard)
-                }
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-
-        canonicalize(&mut board);
 
         Ok(Tps {
             board,
@@ -362,7 +376,6 @@ pub enum ParseTpsError {
     InvalidRunLength,
     InvalidFullMove,
     NonSquareBoard,
-    MissingBoard,
 }
 
 impl Error for ParseTpsError {}
@@ -381,7 +394,6 @@ impl Display for ParseTpsError {
             InvalidRunLength => "malformed adjacent empty square count",
             InvalidFullMove => "malformed full move counter",
             NonSquareBoard => "length of board row different than column",
-            MissingBoard => "received \"\" as board",
         }
         .fmt(f)
     }
@@ -475,11 +487,6 @@ mod tests {
         error::<ExtendedSquare, _>(["x_two", "xF", "xS", "x "], InvalidRunLength);
     }
 
-    fn start_position_tps(s: usize) -> String {
-        let row = format!("x{s}");
-        format!("{} 1 1", repeat(row).take(s).collect::<Vec<_>>().join("/"))
-    }
-
     fn alt_start_position_tps(s: usize) -> String {
         let tile = "x";
         format!(
@@ -515,7 +522,7 @@ mod tests {
 
     #[test]
     fn nonstandard_start_positions() {
-        round_trip::<Tps, _>(["x2/x2 1 1"]);
+        round_trip::<Tps, _>([" 1 1", "x2/x2 1 1"]);
         transform::<Tps, _>([("x1 1 1", "x 1 1")]);
     }
 
@@ -538,7 +545,6 @@ mod tests {
         );
         error::<Tps, _>(["x2/x2 w 1"], InvalidColor);
         error::<Tps, _>(["x2/x2 1 1.5"], InvalidFullMove);
-        error::<Tps, _>([" 2 14"], MissingBoard);
         error::<Tps, _>(
             ["x/x 1 1", "x3/x3 1 1", "1,2,1C/x2/1112S,1S,x 1 9", "x0 1 1"],
             NonSquareBoard,

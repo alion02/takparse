@@ -3,21 +3,21 @@ use std::{
     str::FromStr,
 };
 
+// TODO: serde, docs, tests
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum CanonicalPiece {
-    Default,
+pub enum Piece {
     Flat,
     Wall,
     Cap,
 }
 
-impl FromStr for CanonicalPiece {
+impl FromStr for Piece {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "" => Ok(Self::Default),
-            "F" => Ok(Self::Flat),
+            "" | "F" => Ok(Self::Flat),
             "S" => Ok(Self::Wall),
             "C" => Ok(Self::Cap),
             _ => Err(()),
@@ -25,11 +25,10 @@ impl FromStr for CanonicalPiece {
     }
 }
 
-impl Display for CanonicalPiece {
+impl Display for Piece {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
-            Self::Default => "",
-            Self::Flat => "F",
+            Self::Flat => "",
             Self::Wall => "S",
             Self::Cap => "C",
         }

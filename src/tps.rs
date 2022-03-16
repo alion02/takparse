@@ -1,4 +1,4 @@
-use crate::util::CanonicalPiece;
+use crate::util::Piece;
 use std::{
     error::Error,
     fmt::{Display, Formatter, Result as FmtResult},
@@ -8,53 +8,6 @@ use std::{
 };
 
 // TODO: serde, docs, tests
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Piece {
-    Flat,
-    Wall,
-    Cap,
-}
-
-impl TryFrom<CanonicalPiece> for Piece {
-    type Error = ParseTpsError;
-
-    fn try_from(value: CanonicalPiece) -> Result<Self, Self::Error> {
-        match value {
-            CanonicalPiece::Default => Err(ParseTpsError::MissingPiece),
-            CanonicalPiece::Flat => Err(ParseTpsError::InvalidPiece),
-            CanonicalPiece::Wall => Ok(Self::Wall),
-            CanonicalPiece::Cap => Ok(Self::Cap),
-        }
-    }
-}
-
-impl From<Piece> for CanonicalPiece {
-    fn from(value: Piece) -> Self {
-        match value {
-            Piece::Flat => CanonicalPiece::Default,
-            Piece::Wall => CanonicalPiece::Wall,
-            Piece::Cap => CanonicalPiece::Cap,
-        }
-    }
-}
-
-impl FromStr for Piece {
-    type Err = ParseTpsError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.parse::<CanonicalPiece>() {
-            Ok(piece) => piece.try_into(),
-            Err(()) => Err(ParseTpsError::InvalidPiece),
-        }
-    }
-}
-
-impl Display for Piece {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        CanonicalPiece::from(*self).fmt(f)
-    }
-}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Color {
@@ -121,7 +74,11 @@ impl FromStr for Stack {
             match c.to_string().parse() {
                 Ok(color) => colors.push(color),
                 _ => {
-                    top = once(c).chain(i).collect::<String>().parse()?;
+                    top = once(c)
+                        .chain(i)
+                        .collect::<String>()
+                        .parse()
+                        .map_err(|_| ParseTpsError::InvalidPiece)?;
                     break;
                 }
             }
@@ -455,17 +412,6 @@ mod tests {
         cases
             .into_iter()
             .for_each(|s| assert_eq!(s.parse::<T>(), Err(err)));
-    }
-
-    #[test]
-    fn piece() {
-        round_trip::<Piece, _>(["S", "C"]);
-    }
-
-    #[test]
-    fn not_piece() {
-        error::<Piece, _>(["1", "2", "F", "s", "c", "f", "thing"], InvalidPiece);
-        error::<Piece, _>([""], MissingPiece);
     }
 
     #[test]

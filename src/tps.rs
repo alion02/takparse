@@ -1,4 +1,4 @@
-use crate::util::Piece;
+use crate::Piece;
 use std::{
     error::Error,
     fmt::{Display, Formatter, Result as FmtResult},

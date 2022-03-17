@@ -73,11 +73,64 @@ impl Display for Square {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ParseDirectionError {
+    Malformed,
+    Unknown,
+}
+
+impl Error for ParseDirectionError {}
+
+impl Display for ParseDirectionError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        use ParseDirectionError::*;
+
+        match self {
+            Malformed => "a direction consists of exactly one character",
+            Unknown => "character was not '+', '-', '>', '<'",
+        }
+        .fmt(f)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Direction {
     Up,
     Down,
     Right,
     Left,
+}
+
+impl FromStr for Direction {
+    type Err = ParseDirectionError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut chars = s.chars();
+        if let Some(c) = chars.next() {
+            if chars.next() == None {
+                return match c {
+                    '+' => Ok(Self::Up),
+                    '-' => Ok(Self::Down),
+                    '>' => Ok(Self::Right),
+                    '<' => Ok(Self::Left),
+                    _ => Err(ParseDirectionError::Unknown),
+                };
+            }
+        }
+
+        Err(ParseDirectionError::Malformed)
+    }
+}
+
+impl Display for Direction {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        match self {
+            Self::Up => '+',
+            Self::Down => '-',
+            Self::Right => '>',
+            Self::Left => '<',
+        }
+        .fmt(f)
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]

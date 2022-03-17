@@ -37,21 +37,27 @@ impl FromStr for Square {
     type Err = ParseSquareError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let chars = s.as_bytes();
-        match chars.len() {
-            2 => {
-                let column = chars[0].wrapping_sub(b'a');
-                let row = chars[1].wrapping_sub(b'1');
-                if column >= 8 {
-                    Err(ParseSquareError::BadColumn)
-                } else if row >= 8 {
-                    Err(ParseSquareError::BadRow)
-                } else {
-                    Ok(Square { row, column })
+        let mut chars = s.chars();
+        if let Some(column_char) = chars.next() {
+            if let Some(row_char) = chars.next() {
+                if chars.next() == None {
+                    let column = (column_char as u32).wrapping_sub('a' as u32);
+                    let row = (row_char as u32).wrapping_sub('1' as u32);
+                    return if column >= 8 {
+                        Err(ParseSquareError::BadColumn)
+                    } else if row >= 8 {
+                        Err(ParseSquareError::BadRow)
+                    } else {
+                        Ok(Square {
+                            row: row as u8,
+                            column: column as u8,
+                        })
+                    };
                 }
             }
-            _ => Err(ParseSquareError::Malformed),
         }
+
+        Err(ParseSquareError::Malformed)
     }
 }
 

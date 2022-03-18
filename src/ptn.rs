@@ -160,6 +160,20 @@ impl Display for ParsePatternError {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Pattern(u8);
 
+impl Pattern {
+    pub fn count_pieces(self) -> u32 {
+        u8::BITS - self.0.trailing_zeros()
+    }
+
+    pub fn count_final_square(self) -> u32 {
+        self.0.leading_zeros() + 1
+    }
+
+    pub unsafe fn spread_to_one_unchecked(pieces: u32) -> Pattern {
+        Self(1u8.rotate_left(pieces))
+    }
+}
+
 impl FromStr for Pattern {
     type Err = ParsePatternError;
 
@@ -212,7 +226,149 @@ impl Display for Pattern {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ParseMoveError {
+    Square(ParseSquareError),
+    Direction(ParseDirectionError),
+    Pattern(ParsePatternError),
+    Malformed,
+    BadSquarePieceOrCount,
+    TruncatedSpread,
+    BadPlacement,
+    CountMismatch,
+    BadCrush,
+}
+
+impl From<ParseSquareError> for ParseMoveError {
+    fn from(value: ParseSquareError) -> Self {
+        Self::Square(value)
+    }
+}
+
+impl From<ParseDirectionError> for ParseMoveError {
+    fn from(value: ParseDirectionError) -> Self {
+        Self::Direction(value)
+    }
+}
+
+impl From<ParsePatternError> for ParseMoveError {
+    fn from(value: ParsePatternError) -> Self {
+        Self::Pattern(value)
+    }
+}
+
+impl Error for ParseMoveError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        use ParseMoveError::*;
+
+        Some(match self {
+            Square(e) => e,
+            Direction(e) => e,
+            Pattern(e) => e,
+            _ => return None,
+        })
+    }
+}
+
+impl Display for ParseMoveError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        use ParseMoveError::*;
+
+        if let Some(e) = self.source() {
+            Display::fmt(&e, f)
+        } else {
+            match self {
+                Malformed => "not a valid ptn move",
+                BadSquarePieceOrCount => "move does not begin with square, piece or count",
+                TruncatedSpread => "spread is missing both a direction and a pattern",
+                BadPlacement => "placement has trailing characters",
+                CountMismatch => "number of pieces taken does not match number of deposited",
+                BadCrush => "declared crush but leaving more than one piece on final square",
+                _ => unreachable!(),
+            }
+            .fmt(f)
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Move {
     Place(Square, Piece),
     Spread(Square, Direction, Pattern),
+}
+
+impl FromStr for Move {
+    type Err = ParseMoveError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        use crate::ptn::Pattern as PatternStruct;
+        use ParseMoveError::*;
+
+        let s = s.trim_end_matches(['?', '!', '\'', '"']);
+        if s.len() < 2 || !s.is_ascii() {
+            return Err(Malformed);
+        }
+
+        let mut piece = None;
+        let mut taken_count = None;
+        let mut rest = &s[2..];
+        let square = s[..2].parse().or_else(|_| {
+            if let Ok(p) = s[..1].parse() {
+                piece = Some(p);
+            } else {
+                let byte = s.as_bytes()[0];
+                let c = byte.wrapping_sub(b'1');
+                if c < 8 {
+                    taken_count = Some(c + 1);
+                } else {
+                    return Err(BadSquarePieceOrCount);
+                }
+            }
+
+            if s.len() >= 3 {
+                rest = &s[3..];
+                &s[1..3]
+            } else {
+                &s[1..]
+            }
+            .parse()
+            .map_err(Square)
+        })?;
+
+        if rest.len() == 0 {
+            if taken_count != None {
+                Err(TruncatedSpread)
+            } else {
+                Ok(Self::Place(square, piece.unwrap_or(Piece::Flat)))
+            }
+        } else {
+            if piece != None {
+                Err(BadPlacement)
+            } else {
+                let direction = rest[..1].parse()?;
+
+                let crush = if s.ends_with('*') {
+                    rest = &rest[..rest.len() - 1];
+                    true
+                } else {
+                    false
+                };
+
+                let taken_count = taken_count.unwrap_or(1) as u32;
+                let pattern = rest[1..].parse().or_else(|e| match e {
+                    ParsePatternError::Ambiguous => {
+                        Ok(unsafe { PatternStruct::spread_to_one_unchecked(taken_count) })
+                    }
+                    _ => Err(e),
+                })?;
+
+                if pattern.count_pieces() != taken_count {
+                    Err(CountMismatch)
+                } else if crush && pattern.count_final_square() != 1 {
+                    Err(BadCrush)
+                } else {
+                    Ok(Self::Spread(square, direction, pattern))
+                }
+            }
+        }
+    }
 }

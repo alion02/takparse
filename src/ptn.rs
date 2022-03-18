@@ -134,7 +134,82 @@ impl Display for Direction {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ParsePatternError {
+    Malformed,
+    Ambiguous,
+    TooLong,
+    TooBig,
+}
+
+impl Error for ParsePatternError {}
+
+impl Display for ParsePatternError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        use ParsePatternError::*;
+
+        match self {
+            Malformed => "found unexpected characters in pattern",
+            Ambiguous => "there is more than one valid interpretation of an empty pattern",
+            TooLong => "pattern drops pieces on more squares than possible on largest supported board size (8)",
+            TooBig => "pattern drops more pieces than highest supported carry limit (8)",
+        }
+        .fmt(f)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Pattern(u8);
+
+impl FromStr for Pattern {
+    type Err = ParsePatternError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        fn shift(c: char) -> Result<u32, ParsePatternError> {
+            let shift = (c as u32).wrapping_sub('1' as u32);
+            if shift < 8 {
+                Ok(shift)
+            } else {
+                Err(ParsePatternError::Malformed)
+            }
+        }
+
+        let mut chars = s.chars();
+
+        let segment_result = chars.by_ref().take(7).try_fold(0u8, |acc, c| {
+            let shift = shift(c)?;
+            if shift < acc.trailing_zeros() {
+                Ok(((acc >> 1) | 0x80) >> shift)
+            } else {
+                Err(ParsePatternError::TooBig)
+            }
+        });
+
+        match chars.try_fold(false, |_, c| shift(c).map(|_| true)) {
+            Ok(false) => match segment_result {
+                Ok(0) => Err(ParsePatternError::Ambiguous),
+                r => r.map(Self),
+            },
+            Ok(true) => Err(ParsePatternError::TooLong),
+            Err(e) => Err(e),
+        }
+    }
+}
+
+impl Display for Pattern {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        let mut value = self.0;
+        let mut prev = value.trailing_zeros();
+        loop {
+            value = value & (value - 1);
+            let trailing = value.trailing_zeros();
+            ((b'0' + (trailing - prev) as u8) as char).fmt(f)?;
+            if value == 0 {
+                return Ok(());
+            }
+            prev = trailing;
+        }
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Move {

@@ -9,7 +9,7 @@ use std::{
     str::FromStr,
 };
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ParsePieceError {
     TooLong,
     BadChar,
@@ -23,7 +23,7 @@ impl Display for ParsePieceError {
 
         match self {
             TooLong => "piece consisted of multiple characters",
-            BadChar => "unknown piece character",
+            BadChar => "unknown piece character (not 'F', 'S', 'C')",
         }
         .fmt(f)
     }
@@ -40,19 +40,21 @@ impl FromStr for Piece {
     type Err = ParsePieceError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        use ParsePieceError::*;
+
         let mut chars = s.chars();
 
         let c = chars.next();
 
         if chars.next() != None {
-            Err(ParsePieceError::TooLong)?
+            Err(TooLong)?
         }
 
         Ok(match c.unwrap_or('F') {
             'F' => Self::Flat,
             'S' => Self::Wall,
             'C' => Self::Cap,
-            _ => Err(ParsePieceError::BadChar)?,
+            _ => Err(BadChar)?,
         })
     }
 }

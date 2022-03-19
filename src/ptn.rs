@@ -290,7 +290,7 @@ impl Display for ParseMoveError {
                 BadPlacement => "placement has trailing characters",
                 CountMismatch => "number of pieces taken does not match number of deposited",
                 BadCrush => "declared crush but leaving more than one piece on final square",
-                _ => unreachable!(),
+                Square(_) | Direction(_) | Pattern(_) => unreachable!(),
             }
             .fmt(f)
         }

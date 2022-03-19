@@ -1,7 +1,8 @@
 mod ptn;
 mod tps;
 
-pub use tps::{Color, ParseTpsError, Stack, Tps};
+pub use ptn::*;
+pub use tps::*;
 
 use std::{
     error::Error,

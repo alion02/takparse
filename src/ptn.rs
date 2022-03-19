@@ -33,6 +33,16 @@ pub struct Square {
     row: u8,
 }
 
+impl Square {
+    pub fn column(self) -> u8 {
+        self.column
+    }
+
+    pub fn row(self) -> u8 {
+        self.row
+    }
+}
+
 impl FromStr for Square {
     type Err = ParseSquareError;
 

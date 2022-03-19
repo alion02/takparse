@@ -207,7 +207,7 @@ impl Pattern {
         self.0.leading_zeros() + 1
     }
 
-    pub unsafe fn drop_all_unchecked(pieces: u32) -> Pattern {
+    unsafe fn drop_all_unchecked(pieces: u32) -> Pattern {
         Self(1u8.rotate_right(pieces))
     }
 }

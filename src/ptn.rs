@@ -215,6 +215,9 @@ impl FromStr for Pattern {
 
 impl Display for Pattern {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        if self.count_squares() == 1 {
+            return Ok(());
+        }
         let mut value = self.0;
         let mut prev = value.trailing_zeros();
         loop {

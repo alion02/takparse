@@ -11,6 +11,30 @@ use std::{
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Piece {
+    Flat,
+    Wall,
+    Cap,
+}
+
+impl Default for Piece {
+    fn default() -> Self {
+        Self::Flat
+    }
+}
+
+impl Display for Piece {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        match self {
+            Self::Flat => "",
+            Self::Wall => "S",
+            Self::Cap => "C",
+        }
+        .fmt(f)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ParsePieceError {
     TooLong,
     BadChar,
@@ -27,19 +51,6 @@ impl Display for ParsePieceError {
             BadChar => "unknown piece character (not 'F', 'S', 'C')",
         }
         .fmt(f)
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Piece {
-    Flat,
-    Wall,
-    Cap,
-}
-
-impl Default for Piece {
-    fn default() -> Self {
-        Self::Flat
     }
 }
 
@@ -63,16 +74,5 @@ impl FromStr for Piece {
             'C' => Self::Cap,
             _ => Err(BadChar)?,
         })
-    }
-}
-
-impl Display for Piece {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        match self {
-            Self::Flat => "",
-            Self::Wall => "S",
-            Self::Cap => "C",
-        }
-        .fmt(f)
     }
 }

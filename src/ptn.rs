@@ -6,6 +6,33 @@ use std::{
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Square {
+    column: u8,
+    row: u8,
+}
+
+impl Square {
+    pub fn column(self) -> u8 {
+        self.column
+    }
+
+    pub fn row(self) -> u8 {
+        self.row
+    }
+}
+
+impl Display for Square {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        write!(
+            f,
+            "{}{}",
+            (b'a' + self.column) as char,
+            (b'1' + self.row) as char
+        )
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ParseSquareError {
     Malformed,
     BadColumn,
@@ -24,22 +51,6 @@ impl Display for ParseSquareError {
             BadRow => "found row not in range '1'-'8'",
         }
         .fmt(f)
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Square {
-    column: u8,
-    row: u8,
-}
-
-impl Square {
-    pub fn column(self) -> u8 {
-        self.column
-    }
-
-    pub fn row(self) -> u8 {
-        self.row
     }
 }
 
@@ -73,37 +84,6 @@ impl FromStr for Square {
     }
 }
 
-impl Display for Square {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(
-            f,
-            "{}{}",
-            (b'a' + self.column) as char,
-            (b'1' + self.row) as char
-        )
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum ParseDirectionError {
-    BadLength,
-    BadChar,
-}
-
-impl Error for ParseDirectionError {}
-
-impl Display for ParseDirectionError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        use ParseDirectionError::*;
-
-        match self {
-            BadLength => "direction did not consist of exactly 1 character",
-            BadChar => "unknown direction character (not '+', '-', '>', '<')",
-        }
-        .fmt(f)
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Direction {
     Up,
@@ -126,6 +106,38 @@ impl Direction {
 impl From<Direction> for (i8, i8) {
     fn from(d: Direction) -> Self {
         d.offset()
+    }
+}
+
+impl Display for Direction {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        match self {
+            Self::Up => '+',
+            Self::Down => '-',
+            Self::Right => '>',
+            Self::Left => '<',
+        }
+        .fmt(f)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ParseDirectionError {
+    BadLength,
+    BadChar,
+}
+
+impl Error for ParseDirectionError {}
+
+impl Display for ParseDirectionError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        use ParseDirectionError::*;
+
+        match self {
+            BadLength => "direction did not consist of exactly 1 character",
+            BadChar => "unknown direction character (not '+', '-', '>', '<')",
+        }
+        .fmt(f)
     }
 }
 
@@ -152,15 +164,43 @@ impl FromStr for Direction {
     }
 }
 
-impl Display for Direction {
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Pattern(u8);
+
+impl Pattern {
+    pub fn count_pieces(self) -> u32 {
+        u8::BITS - self.0.trailing_zeros()
+    }
+
+    pub fn count_squares(self) -> u32 {
+        self.0.count_ones()
+    }
+
+    pub fn count_final_square_pieces(self) -> u32 {
+        self.0.leading_zeros() + 1
+    }
+
+    pub unsafe fn drop_all_unchecked(pieces: u32) -> Pattern {
+        Self(1u8.rotate_right(pieces))
+    }
+}
+
+impl Display for Pattern {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        match self {
-            Self::Up => '+',
-            Self::Down => '-',
-            Self::Right => '>',
-            Self::Left => '<',
+        if self.count_squares() == 1 {
+            return Ok(());
         }
-        .fmt(f)
+        let mut value = self.0;
+        let mut prev = value.trailing_zeros();
+        loop {
+            value = value & (value - 1);
+            let trailing = value.trailing_zeros();
+            ((b'0' + (trailing - prev) as u8) as char).fmt(f)?;
+            if value == 0 {
+                return Ok(());
+            }
+            prev = trailing;
+        }
     }
 }
 
@@ -185,27 +225,6 @@ impl Display for ParsePatternError {
             TooBig => "pattern drops more pieces than highest supported carry limit (8)",
         }
         .fmt(f)
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Pattern(u8);
-
-impl Pattern {
-    pub fn count_pieces(self) -> u32 {
-        u8::BITS - self.0.trailing_zeros()
-    }
-
-    pub fn count_squares(self) -> u32 {
-        self.0.count_ones()
-    }
-
-    pub fn count_final_square_pieces(self) -> u32 {
-        self.0.leading_zeros() + 1
-    }
-
-    pub unsafe fn drop_all_unchecked(pieces: u32) -> Pattern {
-        Self(1u8.rotate_right(pieces))
     }
 }
 
@@ -246,21 +265,30 @@ impl FromStr for Pattern {
     }
 }
 
-impl Display for Pattern {
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+enum MoveKind {
+    Place(Piece),
+    Spread(Direction, Pattern),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Move {
+    square: Square,
+    kind: MoveKind,
+}
+
+impl Display for Move {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        if self.count_squares() == 1 {
-            return Ok(());
-        }
-        let mut value = self.0;
-        let mut prev = value.trailing_zeros();
-        loop {
-            value = value & (value - 1);
-            let trailing = value.trailing_zeros();
-            ((b'0' + (trailing - prev) as u8) as char).fmt(f)?;
-            if value == 0 {
-                return Ok(());
+        let Self { square, kind } = self;
+        match kind {
+            MoveKind::Place(piece) => write!(f, "{piece}{square}"),
+            MoveKind::Spread(direction, pattern) => {
+                let count = pattern.count_pieces();
+                if count != 1 {
+                    count.fmt(f)?;
+                }
+                write!(f, "{square}{direction}{pattern}")
             }
-            prev = trailing;
         }
     }
 }
@@ -328,18 +356,6 @@ impl Display for ParseMoveError {
             .fmt(f)
         }
     }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum MoveKind {
-    Place(Piece),
-    Spread(Direction, Pattern),
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Move {
-    square: Square,
-    kind: MoveKind,
 }
 
 impl FromStr for Move {
@@ -411,21 +427,5 @@ impl FromStr for Move {
                 }
             },
         })
-    }
-}
-
-impl Display for Move {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        let Self { square, kind } = self;
-        match kind {
-            MoveKind::Place(piece) => write!(f, "{piece}{square}"),
-            MoveKind::Spread(direction, pattern) => {
-                let count = pattern.count_pieces();
-                if count != 1 {
-                    count.fmt(f)?;
-                }
-                write!(f, "{square}{direction}{pattern}")
-            }
-        }
     }
 }

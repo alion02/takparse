@@ -393,13 +393,13 @@ impl Display for Move {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         let Self { square, kind } = self;
         match kind {
-            MoveKind::Place(piece) => write!(f, "{}{}", piece, square),
+            MoveKind::Place(piece) => write!(f, "{piece}{square}"),
             MoveKind::Spread(direction, pattern) => {
                 let count = pattern.count_pieces();
                 if count != 1 {
                     count.fmt(f)?;
                 }
-                write!(f, "{}{}{}", square, direction, pattern)
+                write!(f, "{square}{direction}{pattern}")
             }
         }
     }

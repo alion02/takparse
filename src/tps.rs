@@ -136,7 +136,7 @@ impl Display for ExtendedSquare {
             Self::Stack(s) => s.fmt(f),
             &Self::EmptySquares(count) => match count {
                 1 => 'x'.fmt(f),
-                _ => write!(f, "x{}", count),
+                _ => write!(f, "x{count}"),
             },
         }
     }

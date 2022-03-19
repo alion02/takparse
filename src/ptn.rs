@@ -187,7 +187,7 @@ impl Pattern {
         self.0.leading_zeros() + 1
     }
 
-    pub unsafe fn spread_to_one_unchecked(pieces: u32) -> Pattern {
+    pub unsafe fn drop_all_unchecked(pieces: u32) -> Pattern {
         Self(1u8.rotate_right(pieces))
     }
 }
@@ -379,7 +379,7 @@ impl FromStr for Move {
                     let taken_count = taken_count.unwrap_or(1) as u32;
                     let pattern = rest[1..].parse().or_else(|e| match e {
                         ParsePatternError::Ambiguous => {
-                            Ok(unsafe { PatternType::spread_to_one_unchecked(taken_count) })
+                            Ok(unsafe { PatternType::drop_all_unchecked(taken_count) })
                         }
                         _ => Err(e),
                     })?;

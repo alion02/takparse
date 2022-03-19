@@ -112,6 +112,23 @@ pub enum Direction {
     Left,
 }
 
+impl Direction {
+    pub fn offset(self) -> (i8, i8) {
+        match self {
+            Self::Up => (0, 1),
+            Self::Down => (0, -1),
+            Self::Right => (1, 0),
+            Self::Left => (-1, 0),
+        }
+    }
+}
+
+impl From<Direction> for (i8, i8) {
+    fn from(d: Direction) -> Self {
+        d.offset()
+    }
+}
+
 impl FromStr for Direction {
     type Err = ParseDirectionError;
 

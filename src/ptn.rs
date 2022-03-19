@@ -285,7 +285,7 @@ impl FromStr for Pattern {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum MoveKind {
+pub enum MoveKind {
     Place(Piece),
     Spread(Direction, Pattern),
 }
@@ -294,6 +294,16 @@ enum MoveKind {
 pub struct Move {
     square: Square,
     kind: MoveKind,
+}
+
+impl Move {
+    pub fn square(self) -> Square {
+        self.square
+    }
+
+    pub fn kind(self) -> MoveKind {
+        self.kind
+    }
 }
 
 impl Display for Move {

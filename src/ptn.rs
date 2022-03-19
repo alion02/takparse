@@ -291,9 +291,15 @@ impl Display for ParseMoveError {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Move {
-    Place(Square, Piece),
-    Spread(Square, Direction, Pattern),
+enum MoveKind {
+    Place(Piece),
+    Spread(Direction, Pattern),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Move {
+    square: Square,
+    kind: MoveKind,
 }
 
 impl FromStr for Move {
@@ -334,41 +340,44 @@ impl FromStr for Move {
             .map_err(Square)
         })?;
 
-        if rest.len() == 0 {
-            if taken_count != None {
-                Err(TruncatedSpread)
-            } else {
-                Ok(Self::Place(square, piece.unwrap_or(Piece::Flat)))
-            }
-        } else {
-            if piece != None {
-                Err(BadPlacement)
-            } else {
-                let direction = rest[..1].parse()?;
-
-                let crush = if s.ends_with('*') {
-                    rest = &rest[..rest.len() - 1];
-                    true
+        Ok(Self {
+            square,
+            kind: if rest.len() == 0 {
+                if taken_count != None {
+                    Err(TruncatedSpread)?
                 } else {
-                    false
-                };
-
-                let taken_count = taken_count.unwrap_or(1) as u32;
-                let pattern = rest[1..].parse().or_else(|e| match e {
-                    ParsePatternError::Ambiguous => {
-                        Ok(unsafe { PatternStruct::spread_to_one_unchecked(taken_count) })
-                    }
-                    _ => Err(e),
-                })?;
-
-                if pattern.count_pieces() != taken_count {
-                    Err(CountMismatch)
-                } else if crush && pattern.count_final_square() != 1 {
-                    Err(BadCrush)
-                } else {
-                    Ok(Self::Spread(square, direction, pattern))
+                    MoveKind::Place(piece.unwrap_or(Piece::Flat))
                 }
-            }
-        }
+            } else {
+                if piece != None {
+                    Err(BadPlacement)?
+                } else {
+                    let direction = rest[..1].parse()?;
+
+                    let crush = if s.ends_with('*') {
+                        rest = &rest[..rest.len() - 1];
+                        true
+                    } else {
+                        false
+                    };
+
+                    let taken_count = taken_count.unwrap_or(1) as u32;
+                    let pattern = rest[1..].parse().or_else(|e| match e {
+                        ParsePatternError::Ambiguous => {
+                            Ok(unsafe { PatternStruct::spread_to_one_unchecked(taken_count) })
+                        }
+                        _ => Err(e),
+                    })?;
+
+                    if pattern.count_pieces() != taken_count {
+                        Err(CountMismatch)?
+                    } else if crush && pattern.count_final_square() != 1 {
+                        Err(BadCrush)?
+                    } else {
+                        MoveKind::Spread(direction, pattern)
+                    }
+                }
+            },
+        })
     }
 }

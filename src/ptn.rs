@@ -165,9 +165,36 @@ impl FromStr for Direction {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct DropCounts(u32);
+
+impl DropCounts {
+    fn new(p: Pattern) -> Self {
+        Self((p.0 as u32) << 24)
+    }
+}
+
+impl Iterator for DropCounts {
+    type Item = u32;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.0 != 0 {
+            let prev = self.0.trailing_zeros();
+            self.0 &= self.0 - 1;
+            Some(self.0.trailing_zeros() - prev)
+        } else {
+            None
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Pattern(u8);
 
 impl Pattern {
+    pub fn drop_counts(self) -> DropCounts {
+        DropCounts::new(self)
+    }
+
     pub fn count_pieces(self) -> u32 {
         u8::BITS - self.0.trailing_zeros()
     }
@@ -188,18 +215,10 @@ impl Pattern {
 impl Display for Pattern {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         if self.count_squares() == 1 {
-            return Ok(());
-        }
-        let mut value = self.0;
-        let mut prev = value.trailing_zeros();
-        loop {
-            value = value & (value - 1);
-            let trailing = value.trailing_zeros();
-            ((b'0' + (trailing - prev) as u8) as char).fmt(f)?;
-            if value == 0 {
-                return Ok(());
-            }
-            prev = trailing;
+            Ok(())
+        } else {
+            self.drop_counts()
+                .try_for_each(|count| ((b'0' + count as u8) as char).fmt(f))
         }
     }
 }

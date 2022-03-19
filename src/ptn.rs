@@ -174,7 +174,7 @@ impl Pattern {
     }
 
     pub unsafe fn spread_to_one_unchecked(pieces: u32) -> Pattern {
-        Self(1u8.rotate_left(pieces))
+        Self(1u8.rotate_right(pieces))
     }
 }
 

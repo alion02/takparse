@@ -165,7 +165,11 @@ impl Pattern {
         u8::BITS - self.0.trailing_zeros()
     }
 
-    pub fn count_final_square(self) -> u32 {
+    pub fn count_squares(self) -> u32 {
+        self.0.count_ones()
+    }
+
+    pub fn count_final_square_pieces(self) -> u32 {
         self.0.leading_zeros() + 1
     }
 
@@ -371,7 +375,7 @@ impl FromStr for Move {
 
                     if pattern.count_pieces() != taken_count {
                         Err(CountMismatch)?
-                    } else if crush && pattern.count_final_square() != 1 {
+                    } else if crush && pattern.count_final_square_pieces() != 1 {
                         Err(BadCrush)?
                     } else {
                         MoveKind::Spread(direction, pattern)

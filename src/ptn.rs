@@ -320,7 +320,6 @@ impl FromStr for Move {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         use self::Pattern as PatternType;
-        use crate::Piece as PieceType;
         use ParseMoveError::*;
 
         let s = s.trim_end_matches(['?', '!', '\'', '"']);
@@ -357,7 +356,7 @@ impl FromStr for Move {
                 if taken_count != None {
                     Err(TruncatedSpread)?
                 } else {
-                    MoveKind::Place(piece.unwrap_or(PieceType::Flat))
+                    MoveKind::Place(piece.unwrap_or_default())
                 }
             } else {
                 if piece != None {

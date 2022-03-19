@@ -36,6 +36,12 @@ pub enum Piece {
     Cap,
 }
 
+impl Default for Piece {
+    fn default() -> Self {
+        Self::Flat
+    }
+}
+
 impl FromStr for Piece {
     type Err = ParsePieceError;
 

@@ -490,10 +490,38 @@ mod tests {
             ("c1>1", "c1>"),
             ("1b1>1", "b1>"),
             ("4a4-4", "4a4-"),
+            ("f7-*", "f7-"),
             ("5d2>131*", "5d2>131"),
             ("a5??", "a5"),
             ("b8\"!", "b8"),
             ("8g3<112121*'!?", "8g3<112121"),
         ])
+    }
+
+    #[test]
+    fn invalid_moves() {
+        use ParseMoveError::*;
+
+        error::<Move, _, _>(["ąąąą", "ą", "", "a", "5", "S"], Malformed);
+        error::<Move, _, _>(
+            ["i1", "H8", "11", "Su5"],
+            Square(ParseSquareError::BadColumn),
+        );
+        error::<Move, _, _>(["af", "a9", "a0", "6cA<"], Square(ParseSquareError::BadRow));
+        error::<Move, _, _>(["9a1>", "ca4"], BadPieceOrCount);
+        error::<Move, _, _>(["5b6", "1g1"], TruncatedSpread);
+        error::<Move, _, _>(["Fe8<", "Cd4*"], BadPlacement);
+        error::<Move, _, _>(["3f3}", "h1/"], Direction(ParseDirectionError::BadChar));
+        error::<Move, _, _>(
+            ["6b2>21012", "3a7-."],
+            Pattern(ParsePatternError::Malformed),
+        );
+        error::<Move, _, _>(
+            ["4d2+324", "7f5<81111111111111"],
+            Pattern(ParsePatternError::TooBig),
+        );
+        error::<Move, _, _>(["8a3>11111111"], Pattern(ParsePatternError::TooLong));
+        error::<Move, _, _>(["2c1+111"], CountMismatch);
+        error::<Move, _, _>(["3d5<*"], BadCrush);
     }
 }

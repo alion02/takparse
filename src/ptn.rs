@@ -440,7 +440,7 @@ impl FromStr for Move {
                 } else {
                     let direction = rest[..1].parse()?;
 
-                    let crush = s.strip_suffix('*').map(|r| rest = r).is_some();
+                    let crush = rest.strip_suffix('*').map(|r| rest = r).is_some();
 
                     let taken_count = taken_count.unwrap_or(1) as u32;
                     let pattern = rest[1..].parse().or_else(|e| match e {

@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod test_utils;
+
 mod ptn;
 mod tps;
 

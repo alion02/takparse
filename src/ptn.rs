@@ -462,3 +462,38 @@ impl FromStr for Move {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils::*;
+
+    #[test]
+    fn common_moves() {
+        round_trip::<Move, _, _>([
+            "a1",
+            "h8",
+            "Sa3",
+            "Cb4",
+            "c2<",
+            "3c5+",
+            "4h4-13",
+            "7a5>3112",
+            "8h1<1112111",
+        ])
+    }
+
+    #[test]
+    fn uncanonical_moves() {
+        transform::<Move, _, _>([
+            ("Fa1", "a1"),
+            ("c1>1", "c1>"),
+            ("1b1>1", "b1>"),
+            ("4a4-4", "4a4-"),
+            ("5d2>131*", "5d2>131"),
+            ("a5??", "a5"),
+            ("b8\"!", "b8"),
+            ("8g3<112121*'!?", "8g3<112121"),
+        ])
+    }
+}

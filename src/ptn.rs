@@ -191,6 +191,10 @@ impl Iterator for DropCounts {
 pub struct Pattern(u8);
 
 impl Pattern {
+    pub fn mask(self) -> u8 {
+        self.0
+    }
+
     pub fn drop_counts(self) -> DropCounts {
         DropCounts::new(self)
     }

@@ -268,19 +268,19 @@ impl FromStr for Pattern {
 
         let mut chars = s.chars();
 
-        let segment_result = chars.by_ref().take(7).try_fold(0u8, |acc, c| {
+        let segment = chars.by_ref().take(7).try_fold(0u8, |acc, c| {
             let shift = shift(c)?;
             if shift < acc.trailing_zeros() {
                 Ok(((acc >> 1) | 0x80) >> shift)
             } else {
                 Err(TooBig)
             }
-        });
+        })?;
 
         match chars.try_fold(false, |_, c| shift(c).map(|_| true)) {
-            Ok(false) => match segment_result {
-                Ok(0) => Err(Ambiguous),
-                r => r.map(Self),
+            Ok(false) => match segment {
+                0 => Err(Ambiguous),
+                s => Ok(Self(s)),
             },
             Ok(true) => Err(TooLong),
             Err(e) => Err(e),

@@ -64,7 +64,7 @@ impl FromStr for Square {
         if let Some(column_char) = chars.next() {
             if let Some(row_char) = chars.next() {
                 if chars.next() == None {
-                    let column = (column_char as u32).wrapping_sub('a' as u32);
+                    let column = (column_char.to_ascii_lowercase() as u32).wrapping_sub('a' as u32);
                     let row = (row_char as u32).wrapping_sub('1' as u32);
                     return if column >= 8 {
                         Err(BadColumn)

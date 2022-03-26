@@ -499,6 +499,20 @@ mod tests {
     }
 
     #[test]
+    fn square_capitalization() {
+        transform::<Square, _, _>([
+            ("A3", "a3"),
+            ("B1", "b1"),
+            ("C4", "c4"),
+            ("D1", "d1"),
+            ("E5", "e5"),
+            ("F8", "f8"),
+            ("G7", "g7"),
+            ("H6", "h6"),
+        ])
+    }
+
+    #[test]
     fn invalid_moves() {
         use ParseMoveError::*;
 

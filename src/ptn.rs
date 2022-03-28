@@ -12,6 +12,27 @@ pub struct Square {
 }
 
 impl Square {
+    pub fn new(column: u8, row: u8) -> Self {
+        assert!(column <= 8);
+        assert!(row <= 8);
+        Self { column, row }
+    }
+
+    pub fn shift(self, direction: Direction, amount: i8) -> Self {
+        let Self { column, row } = self;
+        let (x, y) = direction.offset();
+        Self::new(
+            x.checked_mul(amount)
+                .unwrap()
+                .checked_add(column as i8)
+                .unwrap() as u8,
+            y.checked_mul(amount)
+                .unwrap()
+                .checked_add(row as i8)
+                .unwrap() as u8,
+        )
+    }
+
     pub fn column(self) -> u8 {
         self.column
     }
@@ -191,6 +212,11 @@ impl Iterator for DropCounts {
 pub struct Pattern(u8);
 
 impl Pattern {
+    pub fn from_mask(mask: u8) -> Self {
+        assert!(mask != 0x00 && mask != 0xFF);
+        Self(mask)
+    }
+
     pub fn mask(self) -> u8 {
         self.0
     }
@@ -213,6 +239,16 @@ impl Pattern {
 
     unsafe fn drop_all_unchecked(pieces: u32) -> Pattern {
         Self(1u8.rotate_right(pieces))
+    }
+}
+
+impl FromIterator<u32> for Pattern {
+    fn from_iter<T: IntoIterator<Item = u32>>(iter: T) -> Self {
+        Self::from_mask(iter.into_iter().fold(0u8, |acc, count| {
+            let shift = count - 1;
+            assert!(shift < acc.trailing_zeros());
+            ((acc >> 1) | 0x80) >> shift
+        }))
     }
 }
 

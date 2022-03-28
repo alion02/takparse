@@ -301,6 +301,10 @@ pub struct Move {
 }
 
 impl Move {
+    pub fn new(square: Square, kind: MoveKind) -> Self {
+        Self { square, kind }
+    }
+
     pub fn square(self) -> Square {
         self.square
     }

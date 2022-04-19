@@ -13,8 +13,8 @@ pub struct Square {
 
 impl Square {
     pub fn new(column: u8, row: u8) -> Self {
-        assert!(column <= 8);
-        assert!(row <= 8);
+        assert!(column < 8);
+        assert!(row < 8);
         Self { column, row }
     }
 

@@ -105,6 +105,22 @@ impl FromStr for Square {
     }
 }
 
+impl Square {
+    /// Generate a Square that is one step in the direction from this Square.
+    /// If the generated Square is outside of the board, then this returns None instead.
+    pub fn checked_step(self, direction: Direction, board_size: u8) -> Option<Self> {
+        use Direction::*;
+        let (column, row) = (self.column, self.row);
+        let (column, row) = match direction {
+            Up => (column, row.checked_sub(1)?),
+            Down => (column, row.checked_add(1).filter(|&y| y < board_size)?),
+            Left => (column.checked_sub(1)?, row),
+            Right => (column.checked_add(1).filter(|&x| x < board_size)?, row),
+        };
+        Some(Self { column, row })
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Direction {
     Up,
@@ -563,5 +579,18 @@ mod tests {
         error::<Move, _, _>(["8a3>11111111"], Pattern(ParsePatternError::TooLong));
         error::<Move, _, _>(["2c1+111"], CountMismatch);
         error::<Move, _, _>(["3d5<*"], BadCrush);
+    }
+
+    #[test]
+    fn checked_step() {
+        let s = Square::new;
+        assert_eq!(s(2, 1).checked_step(Direction::Up, 3), Some(s(2, 0)));
+        assert_eq!(s(2, 0).checked_step(Direction::Up, 3), None);
+        assert_eq!(s(4, 5).checked_step(Direction::Down, 7), Some(s(4, 6)));
+        assert_eq!(s(4, 5).checked_step(Direction::Down, 6), None);
+        assert_eq!(s(2, 1).checked_step(Direction::Left, 3), Some(s(1, 1)));
+        assert_eq!(s(0, 1).checked_step(Direction::Left, 3), None);
+        assert_eq!(s(0, 0).checked_step(Direction::Right, 2), Some(s(1, 0)));
+        assert_eq!(s(0, 0).checked_step(Direction::Right, 1), None);
     }
 }

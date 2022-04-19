@@ -4,6 +4,7 @@ use std::{
     fmt::{Display, Formatter, Result as FmtResult},
     iter::{once, repeat},
     num::{IntErrorKind, NonZeroUsize},
+    ops::Not,
     str::FromStr,
 };
 
@@ -35,6 +36,16 @@ impl Display for Color {
             Self::Black => '2',
         }
         .fmt(f)
+    }
+}
+
+impl Not for Color {
+    type Output = Self;
+    fn not(self) -> Self::Output {
+        match self {
+            Self::White => Self::Black,
+            Self::Black => Self::White,
+        }
     }
 }
 

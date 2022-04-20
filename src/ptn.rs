@@ -41,7 +41,7 @@ impl Square {
         self.row
     }
 
-    const fn assert_on_board(&self, board_size: u8) {
+    const fn assert_on_board(self, board_size: u8) {
         assert!(self.row < board_size);
         assert!(self.column < board_size);
     }
@@ -63,7 +63,7 @@ impl Square {
 
     /// Rotate 1 quarter turn counterclockwise.
     #[must_use]
-    pub const fn rotate(&self, board_size: u8) -> Self {
+    pub const fn rotate(self, board_size: u8) -> Self {
         self.assert_on_board(board_size);
         Self {
             column: self.row,
@@ -73,7 +73,7 @@ impl Square {
 
     /// Mirror along the horizontal axis.
     #[must_use]
-    pub const fn mirror(&self, board_size: u8) -> Self {
+    pub const fn mirror(self, board_size: u8) -> Self {
         self.assert_on_board(board_size);
         Self {
             column: self.column,
@@ -165,7 +165,7 @@ impl Direction {
 
     /// Rotate 1 quarter turn counterclockwise.
     #[must_use]
-    pub const fn rotate(&self) -> Self {
+    pub const fn rotate(self) -> Self {
         use Direction::*;
         match self {
             Up => Left,
@@ -177,7 +177,7 @@ impl Direction {
 
     /// Mirror along the horizontal axis. Up and Down get flipped.
     #[must_use]
-    pub const fn mirror(&self) -> Self {
+    pub const fn mirror(self) -> Self {
         use Direction::*;
         match self {
             Up => Down,

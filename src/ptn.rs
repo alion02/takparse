@@ -61,7 +61,7 @@ impl Square {
         Some(Self { column, row })
     }
 
-    /// Rotate 1 quarter turn counterclockwise.
+    /// Rotate 1 quarter turn clockwise.
     #[must_use]
     pub const fn rotate(self, board_size: u8) -> Self {
         self.assert_on_board(board_size);
@@ -163,15 +163,15 @@ impl Direction {
         }
     }
 
-    /// Rotate 1 quarter turn counterclockwise.
+    /// Rotate 1 quarter turn clockwise.
     #[must_use]
     pub const fn rotate(self) -> Self {
         use Direction::*;
         match self {
-            Up => Left,
-            Down => Right,
-            Left => Down,
-            Right => Up,
+            Up => Right,
+            Down => Left,
+            Left => Up,
+            Right => Down,
         }
     }
 
@@ -671,9 +671,6 @@ mod tests {
         // centre
         let sq = s(3, 3);
         assert_eq!(sq.rotate(7), s(3, 3));
-        assert_eq!(sq.rotate(7).rotate(7), s(3, 3));
-        assert_eq!(sq.rotate(7).rotate(7).rotate(7), s(3, 3));
-        assert_eq!(sq.rotate(7).rotate(7).rotate(7).rotate(7), s(3, 3));
     }
 
     #[test]

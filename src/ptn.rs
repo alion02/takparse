@@ -106,9 +106,15 @@ impl FromStr for Square {
 }
 
 impl Square {
+    const fn assert_on_board(&self, board_size: u8) {
+        assert!(self.row < board_size);
+        assert!(self.column < board_size);
+    }
+
     /// Generate a Square that is one step in the direction from this Square.
     /// If the generated Square is outside of the board, then this returns None instead.
     pub fn checked_step(self, direction: Direction, board_size: u8) -> Option<Self> {
+        self.assert_on_board(board_size);
         use Direction::*;
         let (column, row) = (self.column, self.row);
         let (column, row) = match direction {
@@ -118,6 +124,26 @@ impl Square {
             Right => (column.checked_add(1).filter(|&x| x < board_size)?, row),
         };
         Some(Self { column, row })
+    }
+
+    /// Rotates a position 1 quarter turn counterclockwise.
+    #[must_use]
+    pub const fn rotate(&self, board_size: u8) -> Self {
+        self.assert_on_board(board_size);
+        Self {
+            column: self.row,
+            row: board_size - 1 - self.column,
+        }
+    }
+
+    /// Mirror along the x axis.
+    #[must_use]
+    pub const fn mirror(&self, board_size: u8) -> Self {
+        self.assert_on_board(board_size);
+        Self {
+            column: self.column,
+            row: board_size - 1 - self.row,
+        }
     }
 }
 
@@ -592,5 +618,57 @@ mod tests {
         assert_eq!(s(0, 1).checked_step(Direction::Left, 3), None);
         assert_eq!(s(0, 0).checked_step(Direction::Right, 2), Some(s(1, 0)));
         assert_eq!(s(0, 0).checked_step(Direction::Right, 1), None);
+    }
+
+    #[test]
+    fn rotate_even() {
+        let s = Square::new;
+        // corner
+        let sq = s(0, 0);
+        assert_eq!(sq.rotate(6), s(0, 5));
+        assert_eq!(sq.rotate(6).rotate(6), s(5, 5));
+        assert_eq!(sq.rotate(6).rotate(6).rotate(6), s(5, 0));
+        assert_eq!(sq.rotate(6).rotate(6).rotate(6).rotate(6), s(0, 0));
+        // centre
+        let sq = s(2, 2);
+        assert_eq!(sq.rotate(6), s(2, 3));
+        assert_eq!(sq.rotate(6).rotate(6), s(3, 3));
+        assert_eq!(sq.rotate(6).rotate(6).rotate(6), s(3, 2));
+        assert_eq!(sq.rotate(6).rotate(6).rotate(6).rotate(6), s(2, 2));
+    }
+
+    #[test]
+    fn rotate_odd() {
+        let s = Square::new;
+        // corner
+        let sq = s(0, 0);
+        assert_eq!(sq.rotate(7), s(0, 6));
+        assert_eq!(sq.rotate(7).rotate(7), s(6, 6));
+        assert_eq!(sq.rotate(7).rotate(7).rotate(7), s(6, 0));
+        assert_eq!(sq.rotate(7).rotate(7).rotate(7).rotate(7), s(0, 0));
+        // centre
+        let sq = s(3, 3);
+        assert_eq!(sq.rotate(7), s(3, 3));
+        assert_eq!(sq.rotate(7).rotate(7), s(3, 3));
+        assert_eq!(sq.rotate(7).rotate(7).rotate(7), s(3, 3));
+        assert_eq!(sq.rotate(7).rotate(7).rotate(7).rotate(7), s(3, 3));
+    }
+
+    #[test]
+    fn mirror_even() {
+        let square = Square::new(1, 2);
+        assert_eq!(square.mirror(6), Square::new(1, 3));
+        assert_eq!(square.mirror(6).mirror(6), Square::new(1, 2));
+    }
+
+    #[test]
+    fn mirror_odd() {
+        let square = Square::new(4, 1);
+        assert_eq!(square.mirror(7), Square::new(4, 5));
+        assert_eq!(square.mirror(7).mirror(7), Square::new(4, 1));
+
+        // centre line
+        let square = Square::new(2, 3);
+        assert_eq!(square.mirror(7), Square::new(2, 3));
     }
 }

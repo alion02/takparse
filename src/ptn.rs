@@ -126,7 +126,7 @@ impl Square {
         Some(Self { column, row })
     }
 
-    /// Rotates a position 1 quarter turn counterclockwise.
+    /// Rotate 1 quarter turn counterclockwise.
     #[must_use]
     pub const fn rotate(&self, board_size: u8) -> Self {
         self.assert_on_board(board_size);
@@ -136,7 +136,7 @@ impl Square {
         }
     }
 
-    /// Mirror along the x axis.
+    /// Mirror along the horizontal axis.
     #[must_use]
     pub const fn mirror(&self, board_size: u8) -> Self {
         self.assert_on_board(board_size);
@@ -184,6 +184,31 @@ impl Display for Direction {
     }
 }
 
+impl Direction {
+    /// Rotate 1 quarter turn counterclockwise.
+    #[must_use]
+    pub const fn rotate(&self) -> Self {
+        use Direction::*;
+        match self {
+            Up => Left,
+            Down => Right,
+            Left => Down,
+            Right => Up,
+        }
+    }
+
+    /// Mirror along the horizontal axis. Up and Down get flipped.
+    #[must_use]
+    pub const fn mirror(&self) -> Self {
+        use Direction::*;
+        match self {
+            Up => Down,
+            Down => Up,
+            Left => Left,
+            Right => Right,
+        }
+    }
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ParseDirectionError {
     BadLength,

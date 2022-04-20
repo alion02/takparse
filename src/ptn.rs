@@ -53,8 +53,8 @@ impl Square {
         use Direction::*;
         let (column, row) = (self.column, self.row);
         let (column, row) = match direction {
-            Up => (column, row.checked_sub(1)?),
-            Down => (column, row.checked_add(1).filter(|&y| y < board_size)?),
+            Up => (column, row.checked_add(1).filter(|&y| y < board_size)?),
+            Down => (column, row.checked_sub(1)?),
             Left => (column.checked_sub(1)?, row),
             Right => (column.checked_add(1).filter(|&x| x < board_size)?, row),
         };
@@ -632,10 +632,10 @@ mod tests {
     #[test]
     fn checked_step() {
         let s = Square::new;
-        assert_eq!(s(2, 1).checked_step(Direction::Up, 3), Some(s(2, 0)));
-        assert_eq!(s(2, 0).checked_step(Direction::Up, 3), None);
-        assert_eq!(s(4, 5).checked_step(Direction::Down, 7), Some(s(4, 6)));
-        assert_eq!(s(4, 5).checked_step(Direction::Down, 6), None);
+        assert_eq!(s(2, 1).checked_step(Direction::Up, 3), Some(s(2, 2)));
+        assert_eq!(s(2, 3).checked_step(Direction::Up, 4), None);
+        assert_eq!(s(4, 5).checked_step(Direction::Down, 6), Some(s(4, 4)));
+        assert_eq!(s(4, 0).checked_step(Direction::Down, 6), None);
         assert_eq!(s(2, 1).checked_step(Direction::Left, 3), Some(s(1, 1)));
         assert_eq!(s(0, 1).checked_step(Direction::Left, 3), None);
         assert_eq!(s(0, 0).checked_step(Direction::Right, 2), Some(s(1, 0)));

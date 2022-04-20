@@ -532,7 +532,7 @@ impl FromStr for Move {
 
         Ok(Self {
             square,
-            kind: if rest.len() == 0 {
+            kind: if rest.is_empty() {
                 if taken_count != None {
                     Err(TruncatedSpread)?
                 } else {

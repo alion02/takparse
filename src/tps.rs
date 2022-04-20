@@ -293,7 +293,7 @@ impl FromStr for Tps {
             .parse()
             .map_err(|_| ParseTpsError::InvalidFullMove)?;
 
-        let board = if board == "" {
+        let board = if board.is_empty() {
             vec![]
         } else {
             let rows: Vec<_> = board.split('/').collect();

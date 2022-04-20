@@ -40,6 +40,46 @@ impl Square {
     pub fn row(self) -> u8 {
         self.row
     }
+
+    const fn assert_on_board(&self, board_size: u8) {
+        assert!(self.row < board_size);
+        assert!(self.column < board_size);
+    }
+
+    /// Generate a Square that is one step in the direction from this Square.
+    /// If the generated Square is outside of the board, then this returns None instead.
+    pub fn checked_step(self, direction: Direction, board_size: u8) -> Option<Self> {
+        self.assert_on_board(board_size);
+        use Direction::*;
+        let (column, row) = (self.column, self.row);
+        let (column, row) = match direction {
+            Up => (column, row.checked_sub(1)?),
+            Down => (column, row.checked_add(1).filter(|&y| y < board_size)?),
+            Left => (column.checked_sub(1)?, row),
+            Right => (column.checked_add(1).filter(|&x| x < board_size)?, row),
+        };
+        Some(Self { column, row })
+    }
+
+    /// Rotate 1 quarter turn counterclockwise.
+    #[must_use]
+    pub const fn rotate(&self, board_size: u8) -> Self {
+        self.assert_on_board(board_size);
+        Self {
+            column: self.row,
+            row: board_size - 1 - self.column,
+        }
+    }
+
+    /// Mirror along the horizontal axis.
+    #[must_use]
+    pub const fn mirror(&self, board_size: u8) -> Self {
+        self.assert_on_board(board_size);
+        Self {
+            column: self.column,
+            row: board_size - 1 - self.row,
+        }
+    }
 }
 
 impl Display for Square {
@@ -105,48 +145,6 @@ impl FromStr for Square {
     }
 }
 
-impl Square {
-    const fn assert_on_board(&self, board_size: u8) {
-        assert!(self.row < board_size);
-        assert!(self.column < board_size);
-    }
-
-    /// Generate a Square that is one step in the direction from this Square.
-    /// If the generated Square is outside of the board, then this returns None instead.
-    pub fn checked_step(self, direction: Direction, board_size: u8) -> Option<Self> {
-        self.assert_on_board(board_size);
-        use Direction::*;
-        let (column, row) = (self.column, self.row);
-        let (column, row) = match direction {
-            Up => (column, row.checked_sub(1)?),
-            Down => (column, row.checked_add(1).filter(|&y| y < board_size)?),
-            Left => (column.checked_sub(1)?, row),
-            Right => (column.checked_add(1).filter(|&x| x < board_size)?, row),
-        };
-        Some(Self { column, row })
-    }
-
-    /// Rotate 1 quarter turn counterclockwise.
-    #[must_use]
-    pub const fn rotate(&self, board_size: u8) -> Self {
-        self.assert_on_board(board_size);
-        Self {
-            column: self.row,
-            row: board_size - 1 - self.column,
-        }
-    }
-
-    /// Mirror along the horizontal axis.
-    #[must_use]
-    pub const fn mirror(&self, board_size: u8) -> Self {
-        self.assert_on_board(board_size);
-        Self {
-            column: self.column,
-            row: board_size - 1 - self.row,
-        }
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Direction {
     Up,
@@ -164,27 +162,7 @@ impl Direction {
             Self::Left => (-1, 0),
         }
     }
-}
 
-impl From<Direction> for (i8, i8) {
-    fn from(d: Direction) -> Self {
-        d.offset()
-    }
-}
-
-impl Display for Direction {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        match self {
-            Self::Up => '+',
-            Self::Down => '-',
-            Self::Right => '>',
-            Self::Left => '<',
-        }
-        .fmt(f)
-    }
-}
-
-impl Direction {
     /// Rotate 1 quarter turn counterclockwise.
     #[must_use]
     pub const fn rotate(&self) -> Self {
@@ -209,6 +187,25 @@ impl Direction {
         }
     }
 }
+
+impl From<Direction> for (i8, i8) {
+    fn from(d: Direction) -> Self {
+        d.offset()
+    }
+}
+
+impl Display for Direction {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        match self {
+            Self::Up => '+',
+            Self::Down => '-',
+            Self::Right => '>',
+            Self::Left => '<',
+        }
+        .fmt(f)
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ParseDirectionError {
     BadLength,

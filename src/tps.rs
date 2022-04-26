@@ -217,7 +217,7 @@ impl<'a> ExactSizeIterator for Iter<'a> {
     }
 }
 
-/** TODO: overhaul
+/* TODO: overhaul
  * board should be a 1d boxed slice
  * rename and retype color and full move
  * figure out constructor

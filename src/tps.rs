@@ -282,7 +282,7 @@ fn start_position_tps(size: usize) -> String {
     )
 }
 
-fn canonicalize(board: &mut Vec<Vec<ExtendedSquare>>) {
+fn canonicalize(board: &mut [Vec<ExtendedSquare>]) {
     board.iter_mut().for_each(|row| {
         row.dedup_by(|item, acc| {
             if let ExtendedSquare::EmptySquares(acc) = acc {

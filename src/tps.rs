@@ -8,7 +8,7 @@ use std::{
     str::FromStr,
 };
 
-// TODO: serde, docs, tests
+// TODO: granular error types
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Color {
@@ -217,6 +217,12 @@ impl<'a> ExactSizeIterator for Iter<'a> {
     }
 }
 
+/** TODO: overhaul
+ * board should be a 1d boxed slice
+ * rename and retype color and full move
+ * figure out constructor
+ * fix ply
+ */
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Tps {
     board: Vec<Vec<ExtendedSquare>>,

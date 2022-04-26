@@ -13,6 +13,10 @@ use std::{
     str::FromStr,
 };
 
+// TODO: serde, docs, tests
+
+// TODO: full ptn strings
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Piece {
     Flat,

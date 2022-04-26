@@ -126,13 +126,13 @@ impl Display for Stack {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum ExtendedSquare {
+pub enum ExtendedSquare {
     Stack(Stack),
     EmptySquares(usize),
 }
 
 impl ExtendedSquare {
-    pub fn iter(&self) -> Iter {
+    fn iter(&self) -> Iter {
         Iter::new(self)
     }
 }
@@ -166,16 +166,6 @@ impl Display for ExtendedSquare {
                 _ => write!(f, "x{count}"),
             },
         }
-    }
-}
-
-impl<'a> IntoIterator for &'a ExtendedSquare {
-    type Item = Option<&'a Stack>;
-
-    type IntoIter = Iter<'a>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.iter()
     }
 }
 
@@ -235,6 +225,19 @@ pub struct Tps {
 }
 
 impl Tps {
+    pub unsafe fn new_unchecked(
+        mut board: Vec<Vec<ExtendedSquare>>,
+        active_player: Color,
+        full_move_number: NonZeroUsize,
+    ) -> Self {
+        canonicalize(&mut board);
+        Self {
+            board,
+            color: active_player,
+            full_move: full_move_number,
+        }
+    }
+
     pub fn board_2d(&self) -> impl Iterator<Item = impl Iterator<Item = Option<&'_ Stack>>> {
         self.board
             .iter()

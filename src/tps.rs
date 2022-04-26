@@ -56,6 +56,22 @@ pub struct Stack {
 }
 
 impl Stack {
+    /// Creates a new stack.
+    ///
+    /// # Arguments
+    ///
+    /// * `top` - The type of the top piece.
+    /// * `colors` - The colors of the pieces inside the stack, given in order from bottom to top, including the color of the top piece.
+    ///
+    /// # Panics
+    ///
+    /// The constructor panics if the `colors` iterator is empty.
+    pub fn new<I: IntoIterator<Item = Color>>(top: Piece, colors: I) -> Self {
+        let colors = Vec::from_iter(colors);
+        assert!(!colors.is_empty());
+        Self { top, colors }
+    }
+
     pub fn top(&self) -> Piece {
         self.top
     }

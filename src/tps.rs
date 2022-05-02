@@ -267,7 +267,7 @@ impl Tps {
     }
 
     pub fn ply(&self) -> usize {
-        self.full_move() * 2
+        (self.full_move() - 1) * 2
             + if let Color::White = self.color() {
                 0
             } else {

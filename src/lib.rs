@@ -71,7 +71,7 @@ impl FromStr for Piece {
 
         let c = chars.next();
 
-        if chars.next() != None {
+        if chars.next().is_some() {
             Err(TooLong)?
         }
 

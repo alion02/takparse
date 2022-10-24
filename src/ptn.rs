@@ -124,7 +124,7 @@ impl FromStr for Square {
         let mut chars = s.chars();
         if let Some(column_char) = chars.next() {
             if let Some(row_char) = chars.next() {
-                if chars.next() == None {
+                if chars.next().is_none() {
                     let column = (column_char as u32).wrapping_sub('a' as u32);
                     let row = (row_char as u32).wrapping_sub('1' as u32);
                     return if column >= 8 {
@@ -234,7 +234,7 @@ impl FromStr for Direction {
 
         let mut chars = s.chars();
         if let Some(c) = chars.next() {
-            if chars.next() == None {
+            if chars.next().is_none() {
                 return Ok(match c {
                     '+' => Self::Up,
                     '-' => Self::Down,
@@ -533,34 +533,32 @@ impl FromStr for Move {
         Ok(Self {
             square,
             kind: if rest.is_empty() {
-                if taken_count != None {
+                if taken_count.is_some() {
                     Err(TruncatedSpread)?
                 } else {
                     MoveKind::Place(piece.unwrap_or_default())
                 }
+            } else if piece.is_some() {
+                Err(BadPlacement)?
             } else {
-                if piece != None {
-                    Err(BadPlacement)?
-                } else {
-                    let direction = rest[..1].parse()?;
+                let direction = rest[..1].parse()?;
 
-                    let crush = rest.strip_suffix('*').map(|r| rest = r).is_some();
+                let crush = rest.strip_suffix('*').map(|r| rest = r).is_some();
 
-                    let taken_count = taken_count.unwrap_or(1) as u32;
-                    let pattern = rest[1..].parse().or_else(|e| match e {
-                        ParsePatternError::Ambiguous => {
-                            Ok(unsafe { PatternType::drop_all_unchecked(taken_count) })
-                        }
-                        _ => Err(e),
-                    })?;
-
-                    if pattern.count_pieces() != taken_count {
-                        Err(CountMismatch)?
-                    } else if crush && pattern.count_final_square_pieces() != 1 {
-                        Err(BadCrush)?
-                    } else {
-                        MoveKind::Spread(direction, pattern)
+                let taken_count = taken_count.unwrap_or(1) as u32;
+                let pattern = rest[1..].parse().or_else(|e| match e {
+                    ParsePatternError::Ambiguous => {
+                        Ok(unsafe { PatternType::drop_all_unchecked(taken_count) })
                     }
+                    _ => Err(e),
+                })?;
+
+                if pattern.count_pieces() != taken_count {
+                    Err(CountMismatch)?
+                } else if crush && pattern.count_final_square_pieces() != 1 {
+                    Err(BadCrush)?
+                } else {
+                    MoveKind::Spread(direction, pattern)
                 }
             },
         })

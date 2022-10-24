@@ -267,12 +267,7 @@ impl Tps {
     }
 
     pub fn ply(&self) -> usize {
-        (self.full_move() - 1) * 2
-            + if let Color::White = self.color() {
-                0
-            } else {
-                1
-            }
+        (self.full_move() - 1) * 2 + usize::from(Color::White != self.color())
     }
 
     pub fn starting_position(size: usize) -> Self {

@@ -1,3 +1,7 @@
+#![warn(missing_docs)]
+//! `takparse` is a library which provides helpful types and functions
+//! for parsing objects related to the abstract strategy board game Tak.
+
 #[cfg(test)]
 mod test_utils;
 
@@ -13,14 +17,18 @@ use std::{
     str::FromStr,
 };
 
-// TODO: serde, docs, tests
+// TODO: serde, tests
 
 // TODO: full ptn strings
 
+/// Enum representing the piece type.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Piece {
+    /// Flat stone
     Flat,
+    /// Wall, also known as standing stone
     Wall,
+    /// Capstone
     Cap,
 }
 
@@ -41,9 +49,12 @@ impl Display for Piece {
     }
 }
 
+/// Error returned when something goes wrong during the parsing of a [`Piece`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ParsePieceError {
+    /// Pieces should only be single characters. This variant is returned when a piece is not a single character.
     TooLong,
+    /// Pieces should be one of 'F', 'S', and 'C'. If they are not, this variant is returned.
     BadChar,
 }
 

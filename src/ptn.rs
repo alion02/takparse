@@ -5,6 +5,7 @@ use std::{
     str::FromStr,
 };
 
+/// A location on the board.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Square {
     column: u8,
@@ -12,12 +13,52 @@ pub struct Square {
 }
 
 impl Square {
+    /// Creates a new [`Square`].
+    ///
+    /// Both arguments are zero-indexed.
+    /// The constructor asserts that both the column and row are smaller than 8.
+    ///
+    /// # Panics
+    ///
+    /// Panics if either of the arguments is greater or equal to 8.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(Square::new(0, 0).to_string(), "a1");
+    /// assert_eq!(Square::new(1, 0).to_string(), "b1");
+    /// assert_eq!(Square::new(0, 1).to_string(), "a2");
+    /// ```
+    ///
+    /// ```should_panic
+    /// assert_eq!(Square::new(25, 8).to_string(), "z9"); // fails
+    /// ```
     pub fn new(column: u8, row: u8) -> Self {
         assert!(column < 8);
         assert!(row < 8);
         Self { column, row }
     }
 
+    /// Shifts a square by `amount` in `direction`.
+    ///
+    /// This is used when we want to find a relative square, such as when calculating a spread.
+    ///
+    /// # Panics
+    ///
+    /// Panics when the shift would create an invalid square.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let square: Square = "c3".parse().unwrap();
+    /// assert_eq!(square.shift(Direction::Up, 1).to_string(), "c4");
+    /// assert_eq!(square.shift(Direction::Left, 2).to_string(), "a3");
+    /// ```
+    ///
+    /// ```should_panic
+    /// let square: Square = "c3".parse().unwrap();
+    /// assert_eq!(square.shift(Direction::Down, 3).to_string(), "c0"); // fails
+    /// ```
     pub fn shift(self, direction: Direction, amount: i8) -> Self {
         let Self { column, row } = self;
         let (x, y) = direction.offset();
@@ -33,10 +74,12 @@ impl Square {
         )
     }
 
+    /// Getter for `column`.
     pub fn column(self) -> u8 {
         self.column
     }
 
+    /// Getter for `row`.
     pub fn row(self) -> u8 {
         self.row
     }
@@ -46,8 +89,23 @@ impl Square {
         assert!(self.column < board_size);
     }
 
-    /// Generate a Square that is one step in the direction from this Square.
-    /// If the generated Square is outside of the board, then this returns None instead.
+    /// Generate a square that is one step in the direction from this square.
+    /// If the generated square is outside of the board, then this returns [`None`] instead.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the square is not on the board with the given `board_size`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let square: Square = "e3".parse().unwrap();
+    /// assert_eq!(
+    ///     square.checked_step(Direction::Up, 5),
+    ///     Some("e4".parse().unwrap())
+    /// );
+    /// assert_eq!(square.checked_step(Direction::Right, 5), None);
+    /// ```
     pub fn checked_step(self, direction: Direction, board_size: u8) -> Option<Self> {
         self.assert_on_board(board_size);
         use Direction::*;
@@ -61,7 +119,21 @@ impl Square {
         Some(Self { column, row })
     }
 
-    /// Rotate 1 quarter turn clockwise.
+    /// Rotate the square 1 quarter turn clockwise around the center of the board.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the square is not on the board with the given `board_size`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let square: Square = "b2".parse().unwrap();
+    /// assert_eq!(square.rotate(6).to_string(), "b5");
+    /// assert_eq!(square.rotate(6).rotate(6).to_string(), "e5");
+    /// assert_eq!(square.rotate(6).rotate(6).rotate(6).to_string(), "e2");
+    /// assert_eq!(square.rotate(6).rotate(6).rotate(6).rotate(6), square);
+    /// ```
     #[must_use]
     pub const fn rotate(self, board_size: u8) -> Self {
         self.assert_on_board(board_size);
@@ -71,7 +143,19 @@ impl Square {
         }
     }
 
-    /// Mirror along the horizontal axis.
+    /// Mirror the square along the horizontal axis going through the center of the board.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the square is not on the board with the given `board_size`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let square: Square = "b2".parse().unwrap();
+    /// assert_eq!(square.mirror(6).to_string(), "b5");
+    /// assert_eq!(square.mirror(5).to_string(), "b4");
+    /// ```
     #[must_use]
     pub const fn mirror(self, board_size: u8) -> Self {
         self.assert_on_board(board_size);
@@ -93,10 +177,16 @@ impl Display for Square {
     }
 }
 
+/// Error returned when something goes wrong during the parsing of a [`Square`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ParseSquareError {
+    /// Returned when the string is the wrong length. Squares should be exactly two characters.
     Malformed,
+    /// Returned when the column character is not valid.
+    /// This could mean it is not a letter, or that the letter is out of range for squares.
     BadColumn,
+    /// Returned when the row character is not valid.
+    /// This could mean that it is not a number, or that the number is out of range for squares.
     BadRow,
 }
 
@@ -145,15 +235,31 @@ impl FromStr for Square {
     }
 }
 
+/// Enum representing a direction to move on the board.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Direction {
+    /// Positive vertical direction, represented with '+'.
     Up,
+    /// Negative vertical direction, represented with '-'.
     Down,
+    /// Positive horizontal direction, represented with '>'.
     Right,
+    /// Negative horizontal direction, represented with '<'.
     Left,
 }
 
 impl Direction {
+    /// Gets the offset for a given direction.
+    /// The offset is a pair of numbers,
+    /// where the first represents the change in the column,
+    /// and the second number represents the change in the row.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(Direction::Up.offset(), (0, 1));
+    /// assert_eq!(Direction::Left.offset(), (-1, 0));
+    /// ```
     pub fn offset(self) -> (i8, i8) {
         match self {
             Self::Up => (0, 1),
@@ -163,7 +269,14 @@ impl Direction {
         }
     }
 
-    /// Rotate 1 quarter turn clockwise.
+    /// Rotate the direction 1 quarter turn clockwise.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(Direction::Up.rotate(), Direction::Right);
+    /// assert_eq!(Direction::Left.rotate(), Direction::Up);
+    /// ```
     #[must_use]
     pub const fn rotate(self) -> Self {
         use Direction::*;
@@ -175,7 +288,14 @@ impl Direction {
         }
     }
 
-    /// Mirror along the horizontal axis. Up and Down get flipped.
+    /// Mirror the direction along the horizontal axis. Up and Down get flipped.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(Direction::Up.mirror(), Direction::Down);
+    /// assert_eq!(Direction::Left.mirror(), Direction::Left);
+    /// ```
     #[must_use]
     pub const fn mirror(self) -> Self {
         use Direction::*;
@@ -206,9 +326,12 @@ impl Display for Direction {
     }
 }
 
+/// Error returned when something goes wrong during the parsing of a [`Direction`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ParseDirectionError {
+    /// Directions should be exactly one character in length. This variant is returned if they are not.
     BadLength,
+    /// Directions can only be one '+', '-', '>', and '<'. Anything else returns this variant.
     BadChar,
 }
 
@@ -249,6 +372,27 @@ impl FromStr for Direction {
     }
 }
 
+/// A helper struct for iterating over the drop counts encoded in a [`Pattern`].
+///
+/// Drop counts are the numbers which say how many stones to drop on a square before moving on.
+///
+/// # Examples
+///
+/// ```
+/// let spread: Move = "6a1+123".parse().unwrap();
+/// if let MoveKind::Spread(_direction, pattern) = spread.kind() {
+///     let counts: Vec<u32> = pattern.drop_counts().into_iter().collect();
+///     assert_eq!(counts, vec![1, 2, 3]);
+/// }
+/// ```
+///
+/// ```
+/// # let pattern = Pattern::from_mask(0b0010_1100);
+/// // for loops can omit `.into_iter()`
+/// for count in pattern.drop_counts() {
+///     println!("{count}");
+/// }
+/// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct DropCounts(u32);
 
@@ -272,31 +416,130 @@ impl Iterator for DropCounts {
     }
 }
 
+/// An encoded version of the drop counts.
+///
+/// The drop counts represent how many pieces to drop
+/// on each square as a stack is spread across the board.
+///
+/// You are most likely not going to need to interact with this encoding directly.
+/// A much more common use case is to use the drop counts as [`DropCounts`]
+/// which you can get from [`Pattern::drop_counts`].
+///
+/// # Encoding
+///
+/// The encoding, when read from least significant bit to most significant bit,
+/// is as follows:
+/// - Pick up 8 and begin on the current square.
+/// - Every time we encounter a zero, drop a piece on the current square.
+/// - Every time we encounter a one, move to the next square and drop a piece.
+///
+/// For example, the pattern for the move `6a1>123` becomes `0010 1100`.
+/// Here is how that encoding can be read (least significant to most significant):
+///
+/// - First we pick up 8.
+/// - Drop two, once for each of the zeroes on the right. `00` (Essentially we pick up 6)
+/// - Move a step and drop one. `1`
+/// - Move a step and drop two. `01`
+/// - Finally we move a step and drop three. `001`
+///
+/// # Examples
+///
+/// ```
+/// let spread: Move = "6a1+123".parse().unwrap();
+/// if let MoveKind::Spread(_direction, pattern) = spread.kind() {
+///     assert_eq!(pattern.mask(), 0b0010_1100);
+/// }
+/// ```
+///
+/// ```
+/// let spread: Move = "4a1+121".parse().unwrap();
+/// if let MoveKind::Spread(_direction, pattern) = spread.kind() {
+///     assert_eq!(pattern.mask(), 0b1011_0000);
+/// }
+/// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Pattern(u8);
 
 impl Pattern {
+    /// Create a [`Pattern`] from a mask.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the mask is all zeroes or all ones.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let spread: Move = "3a1>21".parse().unwrap();
+    /// if let MoveKind::Spread(_direction, pattern) = spread.kind() {
+    ///     assert_eq!(Pattern::from_mask(0b1010_0000), pattern);
+    /// }
+    /// ```
     pub fn from_mask(mask: u8) -> Self {
         assert!(mask != 0x00 && mask != 0xFF);
         Self(mask)
     }
 
+    /// Getter for `mask`.
     pub fn mask(self) -> u8 {
         self.0
     }
 
+    /// Consumes the `Pattern` and returns the corresponding `DropCounts`.
+    ///
+    /// This is the go-to way for iterating over drop counts.
+    ///
+    /// # Examples
+    /// ```
+    /// # pattern = Pattern::from_mask(0x0111_0000);
+    /// for count in pattern.drop_counts() {
+    ///     println!("{count}");
+    /// }
     pub fn drop_counts(self) -> DropCounts {
         DropCounts::new(self)
     }
 
+    /// Calculates how many pieces are picked up.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let spread: Move = "3a1>21".parse().unwrap();
+    /// if let MoveKind::Spread(_direction, pattern) = spread.kind() {
+    ///     assert_eq!(pattern.count_pieces(), 3);
+    /// }
+    /// ```
     pub fn count_pieces(self) -> u32 {
         u8::BITS - self.0.trailing_zeros()
     }
 
+    /// Counts how many squares this pattern covers.
+    /// This does not include the origin square.
+    /// A valid pattern always covers at least one square.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let spread: Move = "3a1>21".parse().unwrap();
+    /// if let MoveKind::Spread(_direction, pattern) = spread.kind() {
+    ///     assert_eq!(pattern.count_squares(), 2);
+    /// }
+    /// ```
     pub fn count_squares(self) -> u32 {
         self.0.count_ones()
     }
 
+    /// Counts how many pieces are dropped on the final square.
+    /// This can be used to check whether a smash only drops one piece for the final square.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let spread: Move = "3a1>21".parse().unwrap();
+    /// if let MoveKind::Spread(_direction, pattern) = spread.kind() {
+    ///     assert_eq!(pattern.count_final_square_pieces(), 1);
+    /// }
+    /// ```
     pub fn count_final_square_pieces(self) -> u32 {
         self.0.leading_zeros() + 1
     }
@@ -327,11 +570,16 @@ impl Display for Pattern {
     }
 }
 
+/// Error returned when something goes wrong during the parsing of a [`Pattern`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ParsePatternError {
+    /// This variant is returned when there are invalid characters in the pattern.
     Malformed,
+    /// This variant is returned when the pattern is equal to zero, which is an ambigious pattern.
     Ambiguous,
+    /// The amount of drops should be less or equal to 8.
     TooLong,
+    /// The sum of dropped pieces should less or equal to 8. If it is not, then this variant is returned.
     TooBig,
 }
 
@@ -388,12 +636,24 @@ impl FromStr for Pattern {
     }
 }
 
+/// Container enum for the two types of possible moves in Tak.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum MoveKind {
+    /// A place move specifies which type of piece was placed.
     Place(Piece),
+    /// A spread includes a direction and the pattern of dropped pieces.
     Spread(Direction, Pattern),
 }
 
+/// Struct which represents a valid move in Tak.
+///
+/// A move can either be a placement or a spread.
+/// In either case you need to specify a square.
+/// When placing, `square` is the location of the placed piece.
+/// When spreading, `square` is the origin of the spread -
+/// it is the location of the stack which is picked up.
+///
+/// Which kind of move this represents is stored in the `kind`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Move {
     square: Square,
@@ -401,14 +661,33 @@ pub struct Move {
 }
 
 impl Move {
+    /// Creates a new [`Move`] from the `square` and `kind`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// // Constructing the move from parts.
+    /// let square: Square = "c2".parse().unwrap();
+    /// let pattern: Pattern = "123".parse().unwrap();
+    /// let kind: MoveKind = MoveKind::Spread(Direction::Up, pattern);
+    /// let my_move = Move::new(square, kind);
+    ///
+    /// // Parsing a move.
+    /// let parsed_move: Move = "6c2+123".parse().unwrap();
+    ///
+    /// // We get the same thing at the end.
+    /// assert_eq!(my_move, parsed_move);
+    /// ```
     pub fn new(square: Square, kind: MoveKind) -> Self {
         Self { square, kind }
     }
 
+    /// Getter for `square`.
     pub fn square(self) -> Square {
         self.square
     }
 
+    /// Getter for `kind`.
     pub fn kind(self) -> MoveKind {
         self.kind
     }
@@ -430,16 +709,31 @@ impl Display for Move {
     }
 }
 
+/// Error returned when something goes wrong during the parsing of a [`Move`].
+///
+/// This enum encapsulates multiple other parse errors.
+/// These variants are returned when that section of the parsing goes wrong.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ParseMoveError {
+    /// Variant for when there was an error with the square.
     Square(ParseSquareError),
+    /// Variant for when there was an issue with the direction.
     Direction(ParseDirectionError),
+    /// Variant for when there was an problem with the pattern.
     Pattern(ParsePatternError),
+    /// Returned when the move is too short or non-ascii.
     Malformed,
+    /// Returned when the part before the square is wrong.
+    /// For example is the piece prefix is incorrect, or the pick-up count is not valid.
     BadPieceOrCount,
+    /// Returned when a spread is missing both a direction and drop count pattern.
     TruncatedSpread,
+    /// Returned when a placement has invalid character after it.
     BadPlacement,
+    /// Returned when the number of pieces picked up does not equal the number of pieces dropped in a spread.
     CountMismatch,
+    /// When a crush is specified with '*' but the amount of dropped pieces
+    /// on the last square is more than one, this variant is returned.
     BadCrush,
 }
 

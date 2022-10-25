@@ -10,9 +10,12 @@ use std::{
 
 // TODO: granular error types
 
+/// Enum for the player and piece color.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Color {
+    /// Player who makes the first move.
     White,
+    /// Player who goes second.
     Black,
 }
 
@@ -49,6 +52,11 @@ impl Not for Color {
     }
 }
 
+/// A stack is one or more pieces on top of each other.
+/// Yes, even a single flat on its own is considered a stack.
+///
+/// Since only flat pieces can be stacked on, we only need to know the top [`Piece`].
+/// The rest of the stack is encoded as colors of the flats from the bottom of the stack to the top.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Stack {
     top: Piece,
@@ -56,34 +64,60 @@ pub struct Stack {
 }
 
 impl Stack {
-    /// Creates a new stack.
+    /// Creates a new [`Stack`].
     ///
-    /// # Arguments
-    ///
-    /// * `top` - The type of the top piece.
-    /// * `colors` - The colors of the pieces inside the stack, given in order from bottom to top, including the color of the top piece.
+    /// Specify the `top` piece of the stack and the `colors` of the pieces in the stack,
+    /// given in order from bottom to top, including the color of the top piece.
     ///
     /// # Panics
     ///
     /// The constructor panics if the `colors` iterator is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// // In TPS this is a stack of a black capstone on top of a white flat.
+    /// let stack: Stack = "12C".parse().unwrap();
+    ///
+    /// let colors = vec![Color::White, Color::Black];
+    /// assert_eq!(Stack::new(Piece::Cap, colors.into_iter()), stack);
+    /// ```
+    ///
+    /// ```should_panic
+    /// Stack::new(Piece::Flat, [].into_iter()); // panics
+    /// ```
     pub fn new<I: IntoIterator<Item = Color>>(top: Piece, colors: I) -> Self {
         let colors = Vec::from_iter(colors);
         assert!(!colors.is_empty());
         Self { top, colors }
     }
 
+    /// Getter for `top`.
     pub fn top(&self) -> Piece {
         self.top
     }
 
+    /// Getter for `colors`.
+    /// Returns an iterator of owned `Color`s so you can easily iterate
+    /// or use any collection you want, independent of how the colors are stored internally.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let stack: Stack = "122C".parse().unwrap();
+    /// let colors: Vec<Color> = stack.colors().collect();
+    /// assert_eq!(colors, vec![Color::White, Color::Black, Color::Black]);
+    /// ```
     pub fn colors(&self) -> impl Iterator<Item = Color> + '_ {
         self.colors.iter().copied()
     }
 
+    /// Get the color of the top piece. This is the last color in `colors`.
     pub fn top_color(&self) -> Color {
         *self.colors.last().unwrap()
     }
 
+    /// Get the color of the bottom piece. This is first color in `colors`.
     pub fn bottom_color(&self) -> Color {
         *self.colors.first().unwrap()
     }
@@ -125,9 +159,15 @@ impl Display for Stack {
     }
 }
 
+/// An entry in the TPS for a board position.
+///
+/// Can either be a stack or a line of empty squares.
+/// This is because multiple empty squares can be written as one entry.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ExtendedSquare {
+    /// A square with a stack on it.
     Stack(Stack),
+    /// Empty squares, where the contained value tells you how many.
     EmptySquares(usize),
 }
 
@@ -223,6 +263,8 @@ impl<'a> ExactSizeIterator for Iter<'a> {
  * figure out constructor
  * fix ply
  */
+
+/// Parsed TPS struct which has a one-to-one mapping with a TPS string.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Tps {
     board: Vec<Vec<ExtendedSquare>>,
@@ -231,6 +273,41 @@ pub struct Tps {
 }
 
 impl Tps {
+    /// Create a new [`Tps`].
+    ///
+    /// `board` is a collection of rows, where in each row you have an [`ExtendedSquare`].
+    /// `active_player` is the player who's turn it is.
+    /// `full_move_number` is the move number, starting at 1.
+    ///
+    /// No checks are performed with this constructor, so it is possible to create
+    /// an invalid board state, such as when there are a different amount of columns in each row
+    /// or when the number of columns does not match the number rows.
+    ///
+    /// This constructor will canonicalize the representation,
+    /// which means it will join consecutive empty squares together.
+    ///
+    /// # Safety
+    ///
+    /// This function is perfectly safe at the moment.
+    /// The reason for the `unsafe` is to reserve the possibility of having undefined behavior
+    /// when an invalid board state is passed in as input.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let stack: Stack = "112C".parse().unwrap();
+    /// let board = vec![
+    ///     vec![
+    ///         ExtendedSquare::Stack(stack),
+    ///         ExtendedSquare::EmptySquares(2),
+    ///     ],
+    ///     vec![ExtendedSquare::EmptySquares(3)],
+    ///     vec![ExtendedSquare::EmptySquares(3)],
+    /// ];
+    /// let tps =
+    ///     unsafe { Tps::new_unchecked(board, Color::Black, NonZeroUsize::new_unchecked(10)) };
+    /// assert_eq!(tps, "112C,x2/x3/x3 2 10".parse().unwrap());
+    /// ```
     pub unsafe fn new_unchecked(
         mut board: Vec<Vec<ExtendedSquare>>,
         active_player: Color,
@@ -244,28 +321,54 @@ impl Tps {
         }
     }
 
+    /// Get an iterator over iterators of optional stacks.
+    /// The outer iterator iterates over rows, the inner iterator iterates over squares.
+    /// Each element in the inner iterator is an option, where [`None`] means the square is empty.
+    /// The [`Some`] variant has a [`Stack`].
     pub fn board_2d(&self) -> impl Iterator<Item = impl Iterator<Item = Option<&'_ Stack>>> {
         self.board
             .iter()
             .map(|row| row.iter().flat_map(ExtendedSquare::iter))
     }
 
+    /// Get an iterator over the board. Each element is an option, where the [`None`]
+    /// variant means the square is empty and the [`Some`] variant houses a [`Stack`].
+    ///
+    /// This function is just a flattened version of [`Tps::board_2d`].
     pub fn board(&self) -> impl Iterator<Item = Option<&'_ Stack>> {
         self.board_2d().flatten()
     }
 
+    /// Get the size of the board.
+    ///
+    /// For board with 6 rows (normal 6x6 board), this returns 6.
     pub fn size(&self) -> usize {
         self.board.len()
     }
 
+    /// Getter for `color`.
     pub fn color(&self) -> Color {
         self.color
     }
 
+    /// Getter for `full_move`.
     pub fn full_move(&self) -> usize {
         self.full_move.get()
     }
 
+    /// Get the current ply.
+    ///
+    /// Plies are zero-indexed and increment each time a player makes a move.
+    ///
+    /// On turn one, the ply is 0 when it is white to move, and 1 when black is to move.
+    /// On turn 10 it would be ply 18 on white's move, and 19 on black's move.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let tps: Tps = "x3/x3/x3 1 23".parse().unwrap();
+    /// assert_eq!(tps.ply(), 44);
+    /// ```
     pub fn ply(&self) -> usize {
         (self.full_move() - 1) * 2
             + if let Color::White = self.color() {
@@ -275,6 +378,9 @@ impl Tps {
             }
     }
 
+    /// Generate the [`Tps`] for a board of the given `size`.
+    ///
+    /// The starting position is all squares empty, turn 1, white to move.
     pub fn starting_position(size: usize) -> Self {
         start_position_tps(size).parse().unwrap()
     }
@@ -375,16 +481,28 @@ impl Display for Tps {
     }
 }
 
+/// Error returned when something goes wrong during the parsing of a [`Tps`] string.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ParseTpsError {
+    /// Returned when the string has an incorrect number of segments.
+    /// Segments are sections separated by spaces. There should be 3 segments.
     WrongSegmentCount,
+    /// Returned when the color of the player to move is missing.
     MissingColor,
+    /// This variant is never returned.
+    #[deprecated]
     MissingPiece,
+    /// Returned if there is a piece specifier without a color.
     MissingColorOfPiece,
+    /// Is the color in a stack is not '1' or '2' then this variant is used.
     InvalidColor,
+    /// If the piece specifier is not 'S' or 'C' then this variant is used.
     InvalidPiece,
+    /// Returned when the number after 'x' (i.e. how many empty squares) is invalid.
     InvalidRunLength,
+    /// Returned when the move number is invalid.
     InvalidFullMove,
+    /// When the numbers of rows and columns do not match, this variant is returned.
     NonSquareBoard,
 }
 

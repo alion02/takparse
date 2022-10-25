@@ -330,6 +330,23 @@ impl Tps {
     /// The outer iterator iterates over rows, the inner iterator iterates over squares.
     /// Each element in the inner iterator is an option, where [`None`] means the square is empty.
     /// The [`Some`] variant has a [`Stack`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use takparse::Tps;
+    /// let tps: Tps = "1,2,12S/2,x2/x2,211C 1 15".parse().unwrap();
+    /// for row in tps.board_2d() {
+    ///     for square in row {
+    ///         let out = match square {
+    ///             Some(stack) => "stack",
+    ///             None => "empty",
+    ///         };
+    ///         // prints stack, stack, stack, stack, empty, empty, empty, empty, stack
+    ///         println!("{out}");
+    ///     }
+    /// }
+    /// ```
     pub fn board_2d(&self) -> impl Iterator<Item = impl Iterator<Item = Option<&'_ Stack>>> {
         self.board
             .iter()
@@ -340,6 +357,21 @@ impl Tps {
     /// variant means the square is empty and the [`Some`] variant houses a [`Stack`].
     ///
     /// This function is just a flattened version of [`Tps::board_2d`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use takparse::Tps;
+    /// let tps: Tps = "1,2,12S/2,x2/x2,211C 1 15".parse().unwrap();
+    /// for square in tps.board() {
+    ///     let out = match square {
+    ///         Some(stack) => "stack",
+    ///         None => "empty",
+    ///     };
+    ///     // prints stack, stack, stack, stack, empty, empty, empty, empty, stack
+    ///     println!("{out}");
+    /// }
+    /// ```
     pub fn board(&self) -> impl Iterator<Item = Option<&'_ Stack>> {
         self.board_2d().flatten()
     }
@@ -347,6 +379,14 @@ impl Tps {
     /// Get the size of the board.
     ///
     /// For board with 6 rows (normal 6x6 board), this returns 6.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use takparse::Tps;
+    /// let tps: Tps = "1,2,12S/2,x2/x2,211C 1 15".parse().unwrap();
+    /// assert_eq!(tps.size(), 3);
+    /// ```
     pub fn size(&self) -> usize {
         self.board.len()
     }
@@ -387,6 +427,13 @@ impl Tps {
     /// Generate the [`Tps`] for a board of the given `size`.
     ///
     /// The starting position is all squares empty, turn 1, white to move.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use takparse::Tps;
+    /// assert_eq!(Tps::starting_position(4), "x4/x4/x4/x4 1 1".parse().unwrap())
+    /// ```
     pub fn starting_position(size: usize) -> Self {
         start_position_tps(size).parse().unwrap()
     }

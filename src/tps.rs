@@ -76,12 +76,13 @@ impl Stack {
     /// # Examples
     ///
     /// ```
-    /// # use takparse::{Stack, Color, Piece};
+    /// # use takparse::{Stack, Color, Piece, ParseTpsError};
     /// // In TPS this is a stack of a black capstone on top of a white flat.
-    /// let stack: Stack = "12C".parse().unwrap();
+    /// let stack: Stack = "12C".parse()?;
     ///
     /// let colors = vec![Color::White, Color::Black];
     /// assert_eq!(Stack::new(Piece::Cap, colors.into_iter()), stack);
+    /// # Ok::<(), ParseTpsError>(())
     /// ```
     ///
     /// ```should_panic
@@ -106,10 +107,11 @@ impl Stack {
     /// # Examples
     ///
     /// ```
-    /// # use takparse::{Stack, Color};
-    /// let stack: Stack = "122C".parse().unwrap();
+    /// # use takparse::{Stack, Color, ParseTpsError};
+    /// let stack: Stack = "122C".parse()?;
     /// let colors: Vec<Color> = stack.colors().collect();
     /// assert_eq!(colors, vec![Color::White, Color::Black, Color::Black]);
+    /// # Ok::<(), ParseTpsError>(())
     /// ```
     pub fn colors(&self) -> impl Iterator<Item = Color> + '_ {
         self.colors.iter().copied()
@@ -298,9 +300,9 @@ impl Tps {
     /// # Examples
     ///
     /// ```
-    /// # use takparse::{Tps, Stack, ExtendedSquare, Color};
+    /// # use takparse::{Tps, Stack, ExtendedSquare, Color, ParseTpsError};
     /// # use std::num::NonZeroUsize;
-    /// let stack: Stack = "112C".parse().unwrap();
+    /// let stack: Stack = "112C".parse()?;
     /// let board = vec![
     ///     vec![
     ///         ExtendedSquare::Stack(stack),
@@ -311,7 +313,8 @@ impl Tps {
     /// ];
     /// let tps =
     ///     unsafe { Tps::new_unchecked(board, Color::Black, NonZeroUsize::new_unchecked(10)) };
-    /// assert_eq!(tps, "112C,x2/x3/x3 2 10".parse().unwrap());
+    /// assert_eq!(tps, "112C,x2/x3/x3 2 10".parse()?);
+    /// # Ok::<(), ParseTpsError>(())
     /// ```
     pub unsafe fn new_unchecked(
         mut board: Vec<Vec<ExtendedSquare>>,
@@ -334,8 +337,8 @@ impl Tps {
     /// # Examples
     ///
     /// ```
-    /// # use takparse::Tps;
-    /// let tps: Tps = "1,2,12S/2,x2/x2,211C 1 15".parse().unwrap();
+    /// # use takparse::{Tps, ParseTpsError};
+    /// let tps: Tps = "1,2,12S/2,x2/x2,211C 1 15".parse()?;
     /// for row in tps.board_2d() {
     ///     for square in row {
     ///         let out = match square {
@@ -346,6 +349,7 @@ impl Tps {
     ///         println!("{out}");
     ///     }
     /// }
+    /// # Ok::<(), ParseTpsError>(())
     /// ```
     pub fn board_2d(&self) -> impl Iterator<Item = impl Iterator<Item = Option<&'_ Stack>>> {
         self.board
@@ -361,8 +365,8 @@ impl Tps {
     /// # Examples
     ///
     /// ```
-    /// # use takparse::Tps;
-    /// let tps: Tps = "1,2,12S/2,x2/x2,211C 1 15".parse().unwrap();
+    /// # use takparse::{Tps, ParseTpsError};
+    /// let tps: Tps = "1,2,12S/2,x2/x2,211C 1 15".parse()?;
     /// for square in tps.board() {
     ///     let out = match square {
     ///         Some(stack) => "stack",
@@ -371,6 +375,7 @@ impl Tps {
     ///     // prints stack, stack, stack, stack, empty, empty, empty, empty, stack
     ///     println!("{out}");
     /// }
+    /// # Ok::<(), ParseTpsError>(())
     /// ```
     pub fn board(&self) -> impl Iterator<Item = Option<&'_ Stack>> {
         self.board_2d().flatten()
@@ -383,9 +388,10 @@ impl Tps {
     /// # Examples
     ///
     /// ```
-    /// # use takparse::Tps;
-    /// let tps: Tps = "1,2,12S/2,x2/x2,211C 1 15".parse().unwrap();
+    /// # use takparse::{Tps, ParseTpsError};
+    /// let tps: Tps = "1,2,12S/2,x2/x2,211C 1 15".parse()?;
     /// assert_eq!(tps.size(), 3);
+    /// # Ok::<(), ParseTpsError>(())
     /// ```
     pub fn size(&self) -> usize {
         self.board.len()
@@ -411,9 +417,10 @@ impl Tps {
     /// # Examples
     ///
     /// ```
-    /// # use takparse::Tps;
-    /// let tps: Tps = "x3/x3/x3 1 23".parse().unwrap();
+    /// # use takparse::{Tps, ParseTpsError};
+    /// let tps: Tps = "x3/x3/x3 1 23".parse()?;
     /// assert_eq!(tps.ply(), 44);
+    /// # Ok::<(), ParseTpsError>(())
     /// ```
     pub fn ply(&self) -> usize {
         (self.full_move() - 1) * 2
@@ -431,8 +438,9 @@ impl Tps {
     /// # Examples
     ///
     /// ```
-    /// # use takparse::Tps;
-    /// assert_eq!(Tps::starting_position(4), "x4/x4/x4/x4 1 1".parse().unwrap())
+    /// # use takparse::{Tps, ParseTpsError};
+    /// assert_eq!(Tps::starting_position(4), "x4/x4/x4/x4 1 1".parse()?);
+    /// # Ok::<(), ParseTpsError>(())
     /// ```
     pub fn starting_position(size: usize) -> Self {
         start_position_tps(size).parse().unwrap()

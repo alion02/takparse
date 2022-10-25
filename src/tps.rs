@@ -76,6 +76,7 @@ impl Stack {
     /// # Examples
     ///
     /// ```
+    /// # use takparse::{Stack, Color, Piece};
     /// // In TPS this is a stack of a black capstone on top of a white flat.
     /// let stack: Stack = "12C".parse().unwrap();
     ///
@@ -84,6 +85,7 @@ impl Stack {
     /// ```
     ///
     /// ```should_panic
+    /// # use takparse::{Stack, Piece};
     /// Stack::new(Piece::Flat, [].into_iter()); // panics
     /// ```
     pub fn new<I: IntoIterator<Item = Color>>(top: Piece, colors: I) -> Self {
@@ -104,6 +106,7 @@ impl Stack {
     /// # Examples
     ///
     /// ```
+    /// # use takparse::{Stack, Color};
     /// let stack: Stack = "122C".parse().unwrap();
     /// let colors: Vec<Color> = stack.colors().collect();
     /// assert_eq!(colors, vec![Color::White, Color::Black, Color::Black]);
@@ -290,11 +293,13 @@ impl Tps {
     ///
     /// This function is perfectly safe at the moment.
     /// The reason for the `unsafe` is to reserve the possibility of having undefined behavior
-    /// when an invalid board state is passed in as input.
+    /// in the future when an invalid board state is passed in as input.
     ///
     /// # Examples
     ///
     /// ```
+    /// # use takparse::{Tps, Stack, ExtendedSquare, Color};
+    /// # use std::num::NonZeroUsize;
     /// let stack: Stack = "112C".parse().unwrap();
     /// let board = vec![
     ///     vec![
@@ -366,6 +371,7 @@ impl Tps {
     /// # Examples
     ///
     /// ```
+    /// # use takparse::Tps;
     /// let tps: Tps = "x3/x3/x3 1 23".parse().unwrap();
     /// assert_eq!(tps.ply(), 44);
     /// ```

@@ -25,12 +25,14 @@ impl Square {
     /// # Examples
     ///
     /// ```
+    /// # use takparse::Square;
     /// assert_eq!(Square::new(0, 0).to_string(), "a1");
     /// assert_eq!(Square::new(1, 0).to_string(), "b1");
     /// assert_eq!(Square::new(0, 1).to_string(), "a2");
     /// ```
     ///
     /// ```should_panic
+    /// # use takparse::Square;
     /// assert_eq!(Square::new(25, 8).to_string(), "z9"); // fails
     /// ```
     pub fn new(column: u8, row: u8) -> Self {
@@ -50,12 +52,14 @@ impl Square {
     /// # Examples
     ///
     /// ```
+    /// # use takparse::{Direction, Square};
     /// let square: Square = "c3".parse().unwrap();
     /// assert_eq!(square.shift(Direction::Up, 1).to_string(), "c4");
     /// assert_eq!(square.shift(Direction::Left, 2).to_string(), "a3");
     /// ```
     ///
     /// ```should_panic
+    /// # use takparse::{Direction, Square};
     /// let square: Square = "c3".parse().unwrap();
     /// assert_eq!(square.shift(Direction::Down, 3).to_string(), "c0"); // fails
     /// ```
@@ -99,6 +103,7 @@ impl Square {
     /// # Examples
     ///
     /// ```
+    /// # use takparse::{Direction, Square};
     /// let square: Square = "e3".parse().unwrap();
     /// assert_eq!(
     ///     square.checked_step(Direction::Up, 5),
@@ -128,6 +133,7 @@ impl Square {
     /// # Examples
     ///
     /// ```
+    /// # use takparse::Square;
     /// let square: Square = "b2".parse().unwrap();
     /// assert_eq!(square.rotate(6).to_string(), "b5");
     /// assert_eq!(square.rotate(6).rotate(6).to_string(), "e5");
@@ -152,6 +158,7 @@ impl Square {
     /// # Examples
     ///
     /// ```
+    /// # use takparse::Square;
     /// let square: Square = "b2".parse().unwrap();
     /// assert_eq!(square.mirror(6).to_string(), "b5");
     /// assert_eq!(square.mirror(5).to_string(), "b4");
@@ -257,6 +264,7 @@ impl Direction {
     /// # Examples
     ///
     /// ```
+    /// # use takparse::Direction;
     /// assert_eq!(Direction::Up.offset(), (0, 1));
     /// assert_eq!(Direction::Left.offset(), (-1, 0));
     /// ```
@@ -274,6 +282,7 @@ impl Direction {
     /// # Examples
     ///
     /// ```
+    /// # use takparse::Direction;
     /// assert_eq!(Direction::Up.rotate(), Direction::Right);
     /// assert_eq!(Direction::Left.rotate(), Direction::Up);
     /// ```
@@ -293,6 +302,7 @@ impl Direction {
     /// # Examples
     ///
     /// ```
+    /// # use takparse::Direction;
     /// assert_eq!(Direction::Up.mirror(), Direction::Down);
     /// assert_eq!(Direction::Left.mirror(), Direction::Left);
     /// ```
@@ -379,6 +389,7 @@ impl FromStr for Direction {
 /// # Examples
 ///
 /// ```
+/// # use takparse::{Move, MoveKind};
 /// let spread: Move = "6a1+123".parse().unwrap();
 /// if let MoveKind::Spread(_direction, pattern) = spread.kind() {
 ///     let counts: Vec<u32> = pattern.drop_counts().into_iter().collect();
@@ -387,9 +398,11 @@ impl FromStr for Direction {
 /// ```
 ///
 /// ```
-/// # let pattern = Pattern::from_mask(0b0010_1100);
+/// # use takparse::Pattern;
+/// let pattern = Pattern::from_mask(0b0010_1100);
 /// // for loops can omit `.into_iter()`
 /// for count in pattern.drop_counts() {
+///     // prints 1 2 3
 ///     println!("{count}");
 /// }
 /// ```
@@ -445,6 +458,7 @@ impl Iterator for DropCounts {
 /// # Examples
 ///
 /// ```
+/// # use takparse::{Move, MoveKind};
 /// let spread: Move = "6a1+123".parse().unwrap();
 /// if let MoveKind::Spread(_direction, pattern) = spread.kind() {
 ///     assert_eq!(pattern.mask(), 0b0010_1100);
@@ -452,6 +466,7 @@ impl Iterator for DropCounts {
 /// ```
 ///
 /// ```
+/// # use takparse::{Move, MoveKind};
 /// let spread: Move = "4a1+121".parse().unwrap();
 /// if let MoveKind::Spread(_direction, pattern) = spread.kind() {
 ///     assert_eq!(pattern.mask(), 0b1011_0000);
@@ -470,6 +485,7 @@ impl Pattern {
     /// # Examples
     ///
     /// ```
+    /// # use takparse::{Move, MoveKind, Pattern};
     /// let spread: Move = "3a1>21".parse().unwrap();
     /// if let MoveKind::Spread(_direction, pattern) = spread.kind() {
     ///     assert_eq!(Pattern::from_mask(0b1010_0000), pattern);
@@ -491,8 +507,10 @@ impl Pattern {
     ///
     /// # Examples
     /// ```
-    /// # pattern = Pattern::from_mask(0x0111_0000);
+    /// # use takparse::Pattern;
+    /// let pattern = Pattern::from_mask(0b0111_0000);
     /// for count in pattern.drop_counts() {
+    ///     // prints 1, 1, 2
     ///     println!("{count}");
     /// }
     pub fn drop_counts(self) -> DropCounts {
@@ -504,6 +522,7 @@ impl Pattern {
     /// # Examples
     ///
     /// ```
+    /// # use takparse::{Move, MoveKind};
     /// let spread: Move = "3a1>21".parse().unwrap();
     /// if let MoveKind::Spread(_direction, pattern) = spread.kind() {
     ///     assert_eq!(pattern.count_pieces(), 3);
@@ -520,6 +539,7 @@ impl Pattern {
     /// # Examples
     ///
     /// ```
+    /// # use takparse::{Move, MoveKind};
     /// let spread: Move = "3a1>21".parse().unwrap();
     /// if let MoveKind::Spread(_direction, pattern) = spread.kind() {
     ///     assert_eq!(pattern.count_squares(), 2);
@@ -535,6 +555,7 @@ impl Pattern {
     /// # Examples
     ///
     /// ```
+    /// # use takparse::{Move, MoveKind};
     /// let spread: Move = "3a1>21".parse().unwrap();
     /// if let MoveKind::Spread(_direction, pattern) = spread.kind() {
     ///     assert_eq!(pattern.count_final_square_pieces(), 1);
@@ -666,6 +687,7 @@ impl Move {
     /// # Examples
     ///
     /// ```
+    /// # use takparse::{Move, MoveKind, Square, Pattern, Direction};
     /// // Constructing the move from parts.
     /// let square: Square = "c2".parse().unwrap();
     /// let pattern: Pattern = "123".parse().unwrap();

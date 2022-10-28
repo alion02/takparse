@@ -210,3 +210,247 @@ impl FromStr for GameResult {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+pub struct Ptn {
+    tags: Vec<Tag>,
+    moves: Vec<Move>,
+    comments: Vec<Vec<String>>,
+    result: Option<GameResult>,
+}
+
+impl Ptn {
+    pub fn new(
+        tags: Vec<Tag>,
+        moves: Vec<Move>,
+        comments: Vec<Vec<String>>,
+        result: Option<GameResult>,
+    ) -> Self {
+        assert!(comments.len() == moves.len() + 1);
+        Self {
+            tags,
+            moves,
+            comments,
+            result,
+        }
+    }
+}
+
+impl Display for Ptn {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        for tag in &self.tags {
+            writeln!(f, "{tag}")?;
+        }
+        writeln!(f)?;
+        let mut comment_groups = self.comments.iter();
+        if let Some(game_comments) = comment_groups.next() {
+            for comment in game_comments {
+                write!(f, "{{{comment}}} ")?;
+            }
+            writeln!(f)?;
+        }
+        let mut moves = self.moves.iter();
+        let mut turn = 1;
+        while match (moves.next(), moves.next()) {
+            (Some(white), Some(black)) => {
+                let white_comments = comment_groups.next().unwrap().join("} {");
+                let black_comments = comment_groups.next().unwrap().join("} {");
+                writeln!(
+                    f,
+                    "{turn}. {white} {{{white_comments}}} {black} {{{black_comments}}}"
+                )?;
+                turn += 1;
+                true
+            }
+            (Some(white), None) => {
+                let white_comments = comment_groups.next().unwrap().join("} {");
+                writeln!(f, "{turn}. {white} {{{white_comments}}}")?;
+                false
+            }
+            _ => false,
+        } {}
+        if let Some(result) = self.result {
+            writeln!(f, "{result}")?;
+        }
+        Ok(())
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ParsePtnError {
+    Tag(ParseTagError),
+    Move(ParseMoveError),
+    IncompleteMoveNum,
+    UnclosedComment,
+    GarbageAfterResult,
+}
+
+impl Display for ParsePtnError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        use ParsePtnError::*;
+        match self {
+            Tag(err) => err.fmt(f),
+            Move(err) => err.fmt(f),
+            IncompleteMoveNum => "PTN ended with an incomplete move number".fmt(f),
+            UnclosedComment => "PTN ended while in still in comment".fmt(f),
+            GarbageAfterResult => "non whitespace after game result is not allowed".fmt(f),
+        }
+    }
+}
+
+impl Error for ParsePtnError {}
+
+impl From<ParseTagError> for ParsePtnError {
+    fn from(value: ParseTagError) -> Self {
+        Self::Tag(value)
+    }
+}
+
+impl From<ParseMoveError> for ParsePtnError {
+    fn from(value: ParseMoveError) -> Self {
+        Self::Move(value)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ParsePtnTagState {
+    NotInTag,
+    Start,
+    Value,
+    Escape,
+    End,
+    Moves,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ParsePtnMovesState {
+    Outside,
+    MoveNum,
+    Move,
+    Comment,
+}
+
+impl FromStr for Ptn {
+    type Err = ParsePtnError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut chars = s.chars();
+
+        // Parse tags.
+        let mut tags = Vec::new();
+        let mut state = ParsePtnTagState::NotInTag;
+        let mut tag = String::new();
+        let mut last_char = None;
+        for c in chars.by_ref() {
+            use ParsePtnTagState::*;
+            // state transition table
+            state = match (state, c) {
+                (NotInTag, '[') => Start,
+                (Start, '"') => Value,
+                (Value, '\\') => Escape,
+                (Escape, _) => Value,
+                (Value, '"') => End,
+                (End, ']') => NotInTag,
+                (NotInTag, c) if !c.is_whitespace() => Moves,
+                (state, _) => state,
+            };
+            // state action table
+            match state {
+                Start | Value | Escape | End => tag.push(c),
+                NotInTag => {
+                    // just finished tag
+                    if c == ']' {
+                        tag.push(c);
+                        tags.push(std::mem::take(&mut tag).parse()?);
+                    }
+                }
+                Moves => {
+                    last_char = Some(c);
+                    break;
+                }
+            };
+        }
+        // End of string.
+        if last_char.is_none() {
+            if state != ParsePtnTagState::NotInTag {
+                tags.push(tag.parse()?);
+            }
+            return Ok(Self::new(tags, Vec::new(), vec![Vec::new()], None));
+        }
+
+        // Parse moves.
+        let mut moves = Vec::new();
+        let mut comments = Vec::new();
+        let mut result = None;
+        let mut state = ParsePtnMovesState::Outside;
+        let mut comment_group = Vec::new();
+        let mut chunk = String::new();
+        for c in once(last_char.unwrap()).chain(chars.by_ref()) {
+            use ParsePtnMovesState::*;
+            // state transition table
+            let new_state = match (state, c) {
+                (Outside | Move, '{') => Comment,
+                (Outside, '0'..='9') => MoveNum,
+                (Outside, c) if !c.is_whitespace() => Move,
+                (MoveNum, '.') => Outside,
+                (MoveNum, '0'..='9') => MoveNum,
+                (MoveNum, _) => Move,
+                (Comment, '}') => Outside,
+                (Move, c) if c.is_whitespace() => Outside,
+                (state, _) => state,
+            };
+
+            // state action-on-transition table
+            match (state, new_state) {
+                (Comment, Outside) => {
+                    // Add finished comment to comment group.
+                    comment_group.push(std::mem::take(&mut chunk));
+                }
+                (MoveNum, Outside) => {
+                    // We just completely disregard move numbers.
+                    chunk.clear();
+                }
+                (Move, Outside | Comment) => {
+                    // Try parsing game result.
+                    if let Ok(game_result) = chunk.parse::<GameResult>() {
+                        result = Some(game_result);
+                        break;
+                    }
+                    // Push comment group for previous move.
+                    comments.push(std::mem::take(&mut comment_group));
+                    moves.push(std::mem::take(&mut chunk).parse()?);
+                }
+                (Move | MoveNum | Comment, _) | (_, Move | MoveNum) => {
+                    chunk.push(c);
+                }
+                _ => {}
+            }
+            state = new_state;
+        }
+        // If we ran out of characters.
+        match state {
+            ParsePtnMovesState::Move => {
+                // Try parsing game result.
+                if let Ok(game_result) = chunk.parse::<GameResult>() {
+                    result = Some(game_result);
+                } else {
+                    // Push comment group for previous move.
+                    comments.push(std::mem::take(&mut comment_group));
+                    // Push last move.
+                    moves.push(chunk.parse()?);
+                }
+            }
+            ParsePtnMovesState::MoveNum => Err(ParsePtnError::IncompleteMoveNum)?,
+            ParsePtnMovesState::Comment => Err(ParsePtnError::UnclosedComment)?,
+            ParsePtnMovesState::Outside => {}
+        }
+        // Only whitespace allowed after game result.
+        if chars.skip_while(|c| c.is_whitespace()).count() != 0 {
+            Err(ParsePtnError::GarbageAfterResult)?;
+        }
+        // Push last comment group.
+        comments.push(comment_group);
+
+        Ok(Self::new(tags, moves, comments, result))
+    }
+}
+

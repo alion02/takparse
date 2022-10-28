@@ -142,3 +142,71 @@ impl FromStr for Tag {
         Ok(Self::new(key, value))
     }
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+pub enum WinReason {
+    Road,
+    Flat,
+    #[default]
+    Other,
+}
+
+impl Display for WinReason {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        match self {
+            Self::Road => "R",
+            Self::Flat => "F",
+            Self::Other => "1",
+        }
+        .fmt(f)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+pub enum GameResult {
+    White(WinReason),
+    Black(WinReason),
+    #[default]
+    Draw,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ParseGameResultError {
+    Invalid,
+}
+
+impl Display for ParseGameResultError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        write!(f, "invalid or unknown game result")
+    }
+}
+
+impl Error for ParseGameResultError {}
+
+impl Display for GameResult {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        match self {
+            Self::White(reason) => write!(f, "{reason}-0"),
+            Self::Black(reason) => write!(f, "0-{reason}"),
+            Self::Draw => write!(f, "1/2-1/2"),
+        }
+    }
+}
+
+impl FromStr for GameResult {
+    type Err = ParseGameResultError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "F-0" => GameResult::White(WinReason::Flat),
+            "R-0" => GameResult::White(WinReason::Road),
+            "1-0" => GameResult::White(WinReason::Other),
+            "0-F" => GameResult::Black(WinReason::Flat),
+            "0-R" => GameResult::Black(WinReason::Road),
+            "0-1" => GameResult::Black(WinReason::Other),
+            "1/2-1/2" => GameResult::Draw,
+            _ => Err(ParseGameResultError::Invalid)?,
+        })
+    }
+}
+

@@ -1,9 +1,11 @@
 #[cfg(test)]
 mod test_utils;
 
+mod file;
 mod ptn;
 mod tps;
 
+pub use file::*;
 pub use ptn::*;
 pub use tps::*;
 
@@ -14,8 +16,6 @@ use std::{
 };
 
 // TODO: serde, docs, tests
-
-// TODO: full ptn strings
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Piece {

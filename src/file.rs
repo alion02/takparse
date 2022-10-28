@@ -454,3 +454,342 @@ impl FromStr for Ptn {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils::*;
+
+    #[test]
+    fn happy_tags() {
+        assert_eq!(
+            r#"[Site "PlayTak.com"]"#.parse(),
+            Ok(Tag::new("Site", "PlayTak.com"))
+        );
+        assert_eq!(
+            r#"[Event "Online Play"]"#.parse(),
+            Ok(Tag::new("Event", "Online Play"))
+        );
+        assert_eq!(
+            r#"[Date "2018.10.28"]"#.parse(),
+            Ok(Tag::new("Date", "2018.10.28"))
+        );
+        assert_eq!(
+            r#"[Time "16:10:44"]"#.parse(),
+            Ok(Tag::new("Time", "16:10:44"))
+        );
+        assert_eq!(
+            r#"[Player1 "FooBar"]"#.parse(),
+            Ok(Tag::new("Player1", "FooBar"))
+        );
+        assert_eq!(
+            r#"[Player2 "abc1234"]"#.parse(),
+            Ok(Tag::new("Player2", "abc1234"))
+        );
+        assert_eq!(
+            r#"[Clock "10:0 +20"]"#.parse(),
+            Ok(Tag::new("Clock", "10:0 +20"))
+        );
+        assert_eq!(r#"[Result "R-0"]"#.parse(), Ok(Tag::new("Result", "R-0")));
+        assert_eq!(r#"[Size "6"]"#.parse(), Ok(Tag::new("Size", "6")));
+        assert_eq!(r#"[Komi "2"]"#.parse(), Ok(Tag::new("Komi", "2")));
+    }
+
+    #[test]
+    fn unconventional_but_still_ok_tags() {
+        assert_eq!(
+            r#"[noSpace"between value and key"]"#.parse(),
+            Ok(Tag::new("noSpace", "between value and key"))
+        );
+        assert_eq!(
+            r#"[brackets "Ins[ide]The]Va[lue"]"#.parse(),
+            Ok(Tag::new("brackets", "Ins[ide]The]Va[lue"))
+        );
+        assert_eq!(
+            r#"[hell[[][[[[ "[]][[][]"]"#.parse(),
+            Ok(Tag::new("hell[[][[[[", "[]][[][]"))
+        );
+        assert_eq!(
+            r#"[\e\s\\c\ap\e\\ "\\\\\"\\\""]"#.parse(),
+            Ok(Tag::new(r#"\e\s\\c\ap\e\\"#, "\\\\\"\\\""))
+        );
+        assert_eq!(
+            r#"[  lots of space     "room to breathe"    ]"#.parse(),
+            Ok(Tag::new("lots of space", "room to breathe"))
+        );
+        assert_eq!(
+            r#"[ !_%#@ [($ )#@]\" \\\"\"]][] " ]"#.parse(),
+            Ok(Tag::new(r#"!_%#@ [($ )#@]\"#, " \\\"\"]][] "))
+        );
+    }
+
+    #[test]
+    fn erroneous_tags() {
+        error::<Tag, _, _>(
+            [r#"abcd "hi"]"#, r#" [space "before"]"#, ""],
+            ParseTagError::NoOpeningBracket,
+        );
+        error::<Tag, _, _>(
+            [r#"[""]"#, r#"["value"]"#, r#"[   "value"]"#],
+            ParseTagError::MissingKey,
+        );
+        error::<Tag, _, _>(
+            ["[hello]", "[[][]]", "[hello world]"],
+            ParseTagError::NoOpeningQuotationMarks,
+        );
+        error::<Tag, _, _>(
+            [
+                r#"[key "\ "]"#,
+                r#"[key "\]"]"#,
+                r#"[key "\["]"#,
+                r#"[key "\a"]"#,
+                r#"[key "\\ \'"]"#,
+                r#"[key "\" \n"]"#,
+            ],
+            ParseTagError::IllegalEscape,
+        );
+        error::<Tag, _, _>(
+            [r#"[key ""]"#, r#"[ key\"" ]"#, r#"[key "" "hi"]"#],
+            ParseTagError::MissingValue,
+        );
+        error::<Tag, _, _>(
+            [
+                r#"[key "]"#,
+                r#"[key "hello   ]"#,
+                r#"[key "\" value]]"#,
+                r#"[key "\" value\\\"]]"#,
+            ],
+            ParseTagError::NoClosingQuotationMarks,
+        );
+        error::<Tag, _, _>(
+            [
+                r#"[key "value""#,
+                r#"[key "value\"]" "#,
+                r#"[key] "value\"]]\\"  "#,
+            ],
+            ParseTagError::NoClosingBracket,
+        );
+        error::<Tag, _, _>(
+            [
+                r#"[key "value" hi]"#,
+                r#"[key "value" \"\]]"#,
+                r#"[key "value" \n"]"#,
+            ],
+            ParseTagError::GarbageAfterValue,
+        );
+        error::<Tag, _, _>(
+            [
+                r#"[key "value"]]"#,
+                r#"[key "value"] "#,
+                r#"[key "value"] hi there"#,
+                r#"[key "value"] hi there]"#,
+            ],
+            ParseTagError::GarbageAfterTag,
+        );
+    }
+
+    #[test]
+    fn transform_whitespace_in_tags() {
+        transform::<Tag, _, _>([
+            (r#"[key "value"]"#, r#"[key "value"]"#),
+            (r#"[ space "before"]"#, r#"[space "before"]"#),
+            (r#"[no"space"]"#, r#"[no "space"]"#),
+            (r#"[space "after" ]"#, r#"[space "after"]"#),
+            (
+                r#"[   very   spacious   "and  wasteful"    ]"#,
+                r#"[very   spacious "and  wasteful"]"#,
+            ),
+        ])
+    }
+
+    #[test]
+    fn happy_ptn() {
+        let ptn = r#"
+            [Site "PlayTak . com"]
+            [Event "Online Play"]
+            [Date "2018.10.28"]
+            [Time "16:10:44"]
+            [Player1 "aaaa"]
+            [Player2 "bbbb"]
+            [Clock "10:0 +20"]
+            [Result "R-0"]
+            [Size "6"]
+
+            1. a6 f6
+            2. d4 c4
+            3. d3 c3
+            4. d5 c5
+            5. d2 Ce4
+            6. c2 e3
+            7. e2 b2
+            8. Cb3 1e4<1
+            9. 1d3<1 Sd1
+            10. a3 1d1+1
+        "#;
+        let moves = vec![
+            "a6", "f6", "d4", "c4", "d3", "c3", "d5", "c5", "d2", "Ce4", "c2", "e3", "e2", "b2",
+            "Cb3", "1e4<1", "1d3<1", "Sd1", "a3", "1d1+1",
+        ];
+        let comment_groups = (0..(moves.len() + 1)).map(|_| Vec::new()).collect();
+        assert_eq!(
+            ptn.parse::<Ptn>().unwrap(),
+            Ptn::new(
+                vec![
+                    Tag::new("Site", "PlayTak . com"),
+                    Tag::new("Event", "Online Play"),
+                    Tag::new("Date", "2018.10.28"),
+                    Tag::new("Time", "16:10:44"),
+                    Tag::new("Player1", "aaaa"),
+                    Tag::new("Player2", "bbbb"),
+                    Tag::new("Clock", "10:0 +20"),
+                    Tag::new("Result", "R-0"),
+                    Tag::new("Size", "6"),
+                ],
+                moves
+                    .into_iter()
+                    .map(|m| m.parse::<Move>())
+                    .collect::<Result<_, _>>()
+                    .unwrap(),
+                comment_groups,
+                None,
+            )
+        );
+    }
+
+    #[test]
+    fn ugly_tags() {
+        let ptn = r#"
+            [Site "PlayTak dot com"] [Event "Online Play"][Date "2018.10.28"] [][[]] "]]]]\\\""]
+        "#;
+        assert_eq!(
+            ptn.parse::<Ptn>().unwrap(),
+            Ptn::new(
+                vec![
+                    Tag::new("Site", "PlayTak dot com"),
+                    Tag::new("Event", "Online Play"),
+                    Tag::new("Date", "2018.10.28"),
+                    Tag::new("][[]]", "]]]]\\\""),
+                ],
+                vec![],
+                vec![vec![]],
+                None,
+            )
+        );
+    }
+
+    #[test]
+    fn comments_everywhere() {
+        let ptn = r#"
+            [Size "6"] {[valid "tag"]} {a} 1. {b} {cd} a6 {ef} {{{{} f6 {aww man}2.{x}d4{y}c4
+            {}3.{}d3{}{hello}{}c3
+            4.d5{}c5
+            {well} {this}5. {is}d2{quite} {strange}Ce4{don't you think} {  }
+            6. c2 e3
+            {at end}
+        "#;
+        assert_eq!(
+            ptn.parse::<Ptn>().unwrap(),
+            Ptn::new(
+                vec![Tag::new("Size", "6"),],
+                vec!["a6", "f6", "d4", "c4", "d3", "c3", "d5", "c5", "d2", "Ce4", "c2", "e3",]
+                    .into_iter()
+                    .map(|m| m.parse::<Move>())
+                    .collect::<Result<_, _>>()
+                    .unwrap(),
+                vec![
+                    vec![
+                        "[valid \"tag\"]".into(),
+                        "a".into(),
+                        "b".into(),
+                        "cd".into()
+                    ],
+                    vec!["ef".into(), "{{{".into()],
+                    vec!["aww man".into(), "x".into()],
+                    vec!["y".into()],
+                    vec!["".into(), "".into()],
+                    vec!["".into(), "hello".into(), "".into()],
+                    vec![],
+                    vec!["".into()],
+                    vec!["well".into(), "this".into(), "is".into()],
+                    vec!["quite".into(), "strange".into()],
+                    vec!["don't you think".into(), "  ".into()],
+                    vec![],
+                    vec!["at end".into()],
+                ],
+                None,
+            )
+        );
+    }
+
+    #[test]
+    fn without_move_numbers() {
+        let ptn = r#"[Player1 "a"][Player2 "b"][Size "6"][Komi "0"][Opening "no-swap"] a3 a2 a3- b2 d4 {hi} b3?? b4!! c4!? c3 b5 a4 a3 c5 b6 d4< a5 c6 a3- Sa3"#;
+        let moves = vec![
+            "a3", "a2", "a3-", "b2", "d4", "b3", "b4", "c4", "c3", "b5", "a4", "a3", "c5", "b6",
+            "d4<", "a5", "c6", "a3-", "Sa3",
+        ];
+        let mut comment_groups: Vec<Vec<String>> =
+            (0..(moves.len() + 1)).map(|_| Vec::new()).collect();
+        comment_groups[5].push("hi".into());
+        assert_eq!(
+            ptn.parse::<Ptn>().unwrap(),
+            Ptn::new(
+                vec![
+                    Tag::new("Player1", "a"),
+                    Tag::new("Player2", "b"),
+                    Tag::new("Size", "6"),
+                    Tag::new("Komi", "0"),
+                    Tag::new("Opening", "no-swap")
+                ],
+                moves
+                    .into_iter()
+                    .map(|m| m.parse::<Move>())
+                    .collect::<Result<_, _>>()
+                    .unwrap(),
+                comment_groups,
+                None,
+            )
+        );
+    }
+
+    #[test]
+    fn with_game_result() {
+        let ptn = r#"[Player1 "a"][Player2 "b"] 1. a3 a2 2. a3- b2 d4 {hi} 0-1"#;
+        let moves = vec!["a3", "a2", "a3-", "b2", "d4"];
+        let mut comment_groups: Vec<Vec<String>> = (0..moves.len()).map(|_| Vec::new()).collect();
+        comment_groups.push(vec!["hi".into()]);
+        assert_eq!(
+            ptn.parse::<Ptn>().unwrap(),
+            Ptn::new(
+                vec![Tag::new("Player1", "a"), Tag::new("Player2", "b"),],
+                moves
+                    .into_iter()
+                    .map(|m| m.parse::<Move>())
+                    .collect::<Result<_, _>>()
+                    .unwrap(),
+                comment_groups,
+                Some(GameResult::Black(WinReason::Other)),
+            )
+        );
+    }
+
+    #[test]
+    fn no_tags_game_result_and_whitespace() {
+        let ptn = r#"a3 a2 a3- b2 d4 {hi} R-0         "#;
+        let moves = vec!["a3", "a2", "a3-", "b2", "d4"];
+        let mut comment_groups: Vec<Vec<String>> = (0..moves.len()).map(|_| Vec::new()).collect();
+        comment_groups.push(vec!["hi".into()]);
+        assert_eq!(
+            ptn.parse::<Ptn>().unwrap(),
+            Ptn::new(
+                vec![],
+                moves
+                    .into_iter()
+                    .map(|m| m.parse::<Move>())
+                    .collect::<Result<_, _>>()
+                    .unwrap(),
+                comment_groups,
+                Some(GameResult::White(WinReason::Road)),
+            )
+        );
+    }
+}

@@ -237,37 +237,44 @@ impl Ptn {
 
 impl Display for Ptn {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        // Display tags.
         for tag in &self.tags {
             writeln!(f, "{tag}")?;
         }
         writeln!(f)?;
+
+        // Display game comments.
         let mut comment_groups = self.comments.iter();
         if let Some(game_comments) = comment_groups.next() {
-            for comment in game_comments {
-                write!(f, "{{{comment}}} ")?;
+            if !game_comments.is_empty() {
+                writeln!(f, "{{{}}}", game_comments.join("} {"))?;
             }
-            writeln!(f)?;
         }
+
+        fn format_comments(comments: &Vec<String>) -> String {
+            if comments.is_empty() {
+                "".into()
+            } else {
+                format!(" {{{}}}", comments.join("} {"))
+            }
+        }
+
+        // Display moves.
         let mut moves = self.moves.iter();
         let mut turn = 1;
-        while match (moves.next(), moves.next()) {
-            (Some(white), Some(black)) => {
-                let white_comments = comment_groups.next().unwrap().join("} {");
-                let black_comments = comment_groups.next().unwrap().join("} {");
-                writeln!(
-                    f,
-                    "{turn}. {white} {{{white_comments}}} {black} {{{black_comments}}}"
-                )?;
-                turn += 1;
-                true
+        while let Some(white) = moves.next() {
+            let white_comments = format_comments(comment_groups.next().unwrap());
+            if let Some(black) = moves.next() {
+                let black_comments = format_comments(comment_groups.next().unwrap());
+                writeln!(f, "{turn}. {white}{white_comments} {black}{black_comments}")?;
+            } else {
+                writeln!(f, "{turn}. {white}{white_comments}")?;
+                break;
             }
-            (Some(white), None) => {
-                let white_comments = comment_groups.next().unwrap().join("} {");
-                writeln!(f, "{turn}. {white} {{{white_comments}}}")?;
-                false
-            }
-            _ => false,
-        } {}
+            turn += 1;
+        }
+
+        // Display game result.
         if let Some(result) = self.result {
             writeln!(f, "{result}")?;
         }
@@ -791,5 +798,17 @@ mod tests {
                 Some(GameResult::White(WinReason::Road)),
             )
         );
+    }
+
+    #[test]
+    fn transform_ptn_file() {
+        transform::<Ptn, _, _>([(
+            r#"[Player1 "a"][Player2 "b"] {hello}  {there} 1. a3 a2 2. a3- b2 d4 {hi} 0-1"#,
+            "[Player1 \"a\"]\n[Player2 \"b\"]\n\n{hello} {there}\n1. a3 a2\n2. a3- b2\n3. d4 {hi}\n0-1\n",
+        ),
+        (
+            r#"[a    "a"]   [b  "b"  ] 1. a3{"what"}{is}  {this}a2 a3- b2 d4 {cool}   "#,
+            "[a \"a\"]\n[b \"b\"]\n\n1. a3 {\"what\"} {is} {this} a2\n2. a3- b2\n3. d4 {cool}\n",
+        )]);
     }
 }

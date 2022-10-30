@@ -8,6 +8,8 @@ use std::{
     str::FromStr,
 };
 
+// TODO docs
+
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Tag {
     key: String,
@@ -310,6 +312,10 @@ impl Ptn {
 
     pub fn clock(&self) -> Option<&str> {
         self.get_tag("Clock")
+    }
+
+    pub fn opening(&self) -> Option<&str> {
+        self.get_tag("Opening")
     }
 
     pub fn result(&self) -> Option<GameResult> {
@@ -970,5 +976,47 @@ mod tests {
             r#"[a    "a"]   [b  "b"  ] 1. a3{"what"}{is}  {this}a2 a3- b2 d4 {cool}   "#,
             "[a \"a\"]\n[b \"b\"]\n\n1. a3 {\"what\"} {is} {this} a2\n2. a3- b2\n3. d4 {cool}\n",
         )]);
+    }
+
+    #[test]
+    fn common_tags() {
+        let ptn_string = r#"
+[Caps "1"]
+[Flats "2"]
+[Clock "15:0 +15"]
+[Date "2022.10.27"]
+[Event "hi"]
+[Komi "2"]
+[Opening "swap"]
+[Player1 "a"]
+[Player2 "b"]
+[Rating1 "123"]
+[Rating2 "1233"]
+[Round "1"]
+[Site "ptn.ninja"]
+[Size "6"]
+[Time "07:49:59"]
+[TPS "x6/1,x2,2,x2/x,2,1,1,x2/x,2,x4/x,1,x,1,x2/x6 2 32"]
+        "#;
+        let ptn: Ptn = ptn_string.parse().unwrap();
+        assert_eq!(ptn.caps(), Some(1));
+        assert_eq!(ptn.flats(), Some(2));
+        assert_eq!(ptn.clock(), Some("15:0 +15"));
+        assert_eq!(ptn.date(), Some(NaiveDate::from_ymd(2022, 10, 27)));
+        assert_eq!(ptn.event(), Some("hi"));
+        assert_eq!(ptn.komi(), Some(2));
+        assert_eq!(ptn.half_komi(), Some(4));
+        assert_eq!(ptn.opening(), Some("swap"));
+        assert_eq!(ptn.player_1(), Some("a"));
+        assert_eq!(ptn.player_2(), Some("b"));
+        assert_eq!(ptn.rating_1(), Some(123));
+        assert_eq!(ptn.rating_2(), Some(1233));
+        assert_eq!(ptn.site(), Some("ptn.ninja"));
+        assert_eq!(ptn.size(), Some(6));
+        assert_eq!(ptn.time(), Some(NaiveTime::from_hms(7, 49, 59)));
+        assert_eq!(
+            ptn.tps(),
+            Tps::from_str("x6/1,x2,2,x2/x,2,1,1,x2/x,2,x4/x,1,x,1,x2/x6 2 32").ok()
+        );
     }
 }

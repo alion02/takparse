@@ -238,6 +238,18 @@ impl Ptn {
 }
 
 impl Ptn {
+    pub fn tags(&self) -> &[Tag] {
+        &self.tags
+    }
+
+    pub fn moves(&self) -> &[Move] {
+        &self.moves
+    }
+
+    pub fn comments(&self) -> &[Vec<String>] {
+        &self.comments
+    }
+
     /// Get the first matching tag's value.
     pub fn get_tag(&self, key: &str) -> Option<&str> {
         for tag in &self.tags {

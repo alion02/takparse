@@ -351,16 +351,16 @@ impl Display for Ptn {
         for tag in &self.tags {
             writeln!(f, "{tag}")?;
         }
-        writeln!(f)?;
 
         // Display game comments.
         let mut comment_groups = self.comments.iter();
         if let Some(game_comments) = comment_groups.next() {
             if !game_comments.is_empty() {
-                writeln!(f, "{{{}}}", game_comments.join("} {"))?;
+                write!(f, "\n{{{}}}", game_comments.join("} {"))?;
             }
         }
 
+        // Helper function for joining comment groups together.
         fn format_comments(comments: &Vec<String>) -> String {
             if comments.is_empty() {
                 "".into()
@@ -369,16 +369,33 @@ impl Display for Ptn {
             }
         }
 
-        // Display moves.
         let mut moves = self.moves.iter();
         let mut turn = 1;
+
+        // Starting from TPS.
+        if let Some(tps) = self.tps() {
+            turn = tps.full_move();
+            // Starting as black.
+            if tps.color() == Color::Black {
+                if let Some(black) = moves.next() {
+                    let black_comments = format_comments(comment_groups.next().unwrap());
+                    write!(f, "\n{turn}. -- {black}{black_comments}")?;
+                    turn += 1;
+                }
+            }
+        }
+
+        // Display moves.
         while let Some(white) = moves.next() {
             let white_comments = format_comments(comment_groups.next().unwrap());
             if let Some(black) = moves.next() {
                 let black_comments = format_comments(comment_groups.next().unwrap());
-                writeln!(f, "{turn}. {white}{white_comments} {black}{black_comments}")?;
+                write!(
+                    f,
+                    "\n{turn}. {white}{white_comments} {black}{black_comments}"
+                )?;
             } else {
-                writeln!(f, "{turn}. {white}{white_comments}")?;
+                write!(f, "\n{turn}. {white}{white_comments}")?;
                 break;
             }
             turn += 1;
@@ -386,9 +403,10 @@ impl Display for Ptn {
 
         // Display game result.
         if let Some(result) = self.result {
-            writeln!(f, "{result}")?;
+            writeln!(f, " {result}")
+        } else {
+            writeln!(f)
         }
-        Ok(())
     }
 }
 
@@ -507,7 +525,7 @@ impl FromStr for Ptn {
             let new_state = match (state, c) {
                 (Outside | Move, '{') => Comment,
                 (Outside, '0'..='9') => MoveNum,
-                (Outside, c) if !c.is_whitespace() => Move,
+                (Outside, c) if c != '-' && !c.is_whitespace() => Move,
                 (MoveNum, '.') => Outside,
                 (MoveNum, '0'..='9') => MoveNum,
                 (MoveNum, _) => Move,
@@ -911,10 +929,30 @@ mod tests {
     }
 
     #[test]
+    fn starting_as_black() {
+        let ptn = r#"[TPS "2,x5/x6/x2,2,x3/x3,1,1,x/x6/x5,1 2 3"] -- Cd4 d2 e4 c2"#;
+        let moves = vec!["Cd4", "d2", "e4", "c2"];
+        let comment_groups: Vec<Vec<String>> = (0..moves.len() + 1).map(|_| Vec::new()).collect();
+        assert_eq!(
+            ptn.parse::<Ptn>().unwrap(),
+            Ptn::new(
+                vec![Tag::new("TPS", "2,x5/x6/x2,2,x3/x3,1,1,x/x6/x5,1 2 3")],
+                moves
+                    .into_iter()
+                    .map(|m| m.parse::<Move>())
+                    .collect::<Result<_, _>>()
+                    .unwrap(),
+                comment_groups,
+                None,
+            )
+        );
+    }
+
+    #[test]
     fn transform_ptn_file() {
         transform::<Ptn, _, _>([(
             r#"[Player1 "a"][Player2 "b"] {hello}  {there} 1. a3 a2 2. a3- b2 d4 {hi} 0-1"#,
-            "[Player1 \"a\"]\n[Player2 \"b\"]\n\n{hello} {there}\n1. a3 a2\n2. a3- b2\n3. d4 {hi}\n0-1\n",
+            "[Player1 \"a\"]\n[Player2 \"b\"]\n\n{hello} {there}\n1. a3 a2\n2. a3- b2\n3. d4 {hi} 0-1\n",
         ),
         (
             r#"[a    "a"]   [b  "b"  ] 1. a3{"what"}{is}  {this}a2 a3- b2 d4 {cool}   "#,

@@ -1,4 +1,6 @@
-use crate::{Move, ParseMoveError};
+use chrono::{NaiveDate, NaiveTime};
+
+use crate::{Color, Move, ParseMoveError, Tps};
 use std::{
     error::Error,
     fmt::{Display, Formatter, Result as FmtResult},
@@ -20,11 +22,11 @@ impl Tag {
         }
     }
 
-    pub fn key(&self) -> &'_ str {
+    pub fn key(&self) -> &str {
         &self.key
     }
 
-    pub fn value(&self) -> &'_ str {
+    pub fn value(&self) -> &str {
         &self.value
     }
 }
@@ -232,6 +234,114 @@ impl Ptn {
             comments,
             result,
         }
+    }
+}
+
+impl Ptn {
+    /// Get the first matching tag's value.
+    pub fn get_tag(&self, key: &str) -> Option<&str> {
+        for tag in &self.tags {
+            if tag.key() == key {
+                return Some(tag.value());
+            }
+        }
+        None
+    }
+
+    pub fn site(&self) -> Option<&str> {
+        self.get_tag("Site")
+    }
+
+    pub fn event(&self) -> Option<&str> {
+        self.get_tag("Event")
+    }
+
+    pub fn date(&self) -> Option<NaiveDate> {
+        let s = self.get_tag("Date")?;
+        let mut split = s.split('.');
+        let year = split.next()?.parse().ok()?;
+        let month = split.next()?.parse().ok()?;
+        let day = split.next()?.parse().ok()?;
+        if split.next().is_some() {
+            return None;
+        };
+        NaiveDate::from_ymd_opt(year, month, day)
+    }
+
+    pub fn time(&self) -> Option<NaiveTime> {
+        let s = self.get_tag("Time")?;
+        let mut split = s.split(':');
+        let hour = split.next()?.parse().ok()?;
+        let min = split.next()?.parse().ok()?;
+        let sec = split.next()?.parse().ok()?;
+        if split.next().is_some() {
+            return None;
+        };
+        NaiveTime::from_hms_opt(hour, min, sec)
+    }
+
+    pub fn player_1(&self) -> Option<&str> {
+        self.get_tag("Player1")
+    }
+
+    pub fn player_2(&self) -> Option<&str> {
+        self.get_tag("Player2")
+    }
+
+    pub fn rating_1(&self) -> Option<i32> {
+        self.get_tag("Rating1")?.parse().ok()
+    }
+
+    pub fn rating_2(&self) -> Option<i32> {
+        self.get_tag("Rating2")?.parse().ok()
+    }
+
+    pub fn clock(&self) -> Option<&str> {
+        self.get_tag("Clock")
+    }
+
+    pub fn result(&self) -> Option<GameResult> {
+        if self.result.is_some() {
+            return self.result;
+        }
+        self.get_tag("Result")?.parse().ok()
+    }
+
+    pub fn size(&self) -> Option<usize> {
+        self.get_tag("Size")?.parse().ok()
+    }
+
+    pub fn komi(&self) -> Option<i32> {
+        self.half_komi().map(|x| x / 2)
+    }
+
+    pub fn half_komi(&self) -> Option<i32> {
+        let s = self.get_tag("Komi")?;
+
+        match s.split_once('.') {
+            None => s.parse::<i32>().ok().map(|x| x * 2),
+            Some((whole, frac)) => {
+                let minus = s.get(..1)? == "-";
+                let whole = whole.parse::<i32>().ok()?;
+                match frac {
+                    "" | "0" => Some(2 * whole),
+                    "5" => Some(2 * whole + if minus { -1 } else { 1 }),
+                    _ => None,
+                }
+            }
+        }
+    }
+
+    pub fn flats(&self) -> Option<u32> {
+        self.get_tag("Flats")?.parse().ok()
+    }
+
+    pub fn caps(&self) -> Option<u32> {
+        self.get_tag("Caps")?.parse().ok()
+    }
+
+    pub fn tps(&self) -> Option<Tps> {
+        self.get_tag("TPS")?.parse().ok()
     }
 }
 

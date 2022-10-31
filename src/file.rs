@@ -8,8 +8,7 @@ use std::{
     str::FromStr,
 };
 
-// TODO docs
-
+/// PTN Tag which is used to add additional information to a PTN file.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Tag {
     key: String,
@@ -17,6 +16,7 @@ pub struct Tag {
 }
 
 impl Tag {
+    /// Create a new [`Tag`].
     pub fn new<A: Into<String>, B: Into<String>>(key: A, value: B) -> Self {
         Self {
             key: key.into(),
@@ -24,10 +24,12 @@ impl Tag {
         }
     }
 
+    /// Getter for the `key`.
     pub fn key(&self) -> &str {
         &self.key
     }
 
+    /// Getter for the `value`.
     pub fn value(&self) -> &str {
         &self.value
     }
@@ -39,16 +41,26 @@ impl Display for Tag {
     }
 }
 
+/// Error returned when something goes wrong during the parsing of a [`Tag`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ParseTagError {
+    /// The tag is missing an opening square bracket '['.
     NoOpeningBracket,
+    /// The tag is missing the first part of the tag, referred to as the key.
     MissingKey,
+    /// Missing opening quotation marks '"' which enclose the value.
     NoOpeningQuotationMarks,
+    /// An illegal escape was attempted in the value of the tag. The only allowed escapes are `\"` and `\\`.
     IllegalEscape,
+    /// When the value is empty, this error is returned.
     MissingValue,
+    /// Missing closing quotation marks '"' at the end of the value.
     NoClosingQuotationMarks,
+    /// The tag is missing the closing square bracket ']'.
     NoClosingBracket,
+    /// When there is text following after the value but before the closing square bracket, this error variant is returned.
     GarbageAfterValue,
+    /// If there is text after the closing square bracket, this error variant is returned.
     GarbageAfterTag,
 }
 
@@ -147,10 +159,15 @@ impl FromStr for Tag {
     }
 }
 
+/// The reason for a win in Tak.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub enum WinReason {
+    /// The reason for the win was that one player made a road.
     Road,
+    /// The reason for the win was that the game ended without a road, and one player had more flats.
     Flat,
+    /// The `Other` variant should be used for anything that is not a road win or a flat win.
+    /// Examples of `Other` are resignation and winning on time.
     #[default]
     Other,
 }
@@ -166,16 +183,22 @@ impl Display for WinReason {
     }
 }
 
+/// The result of a game of Tak.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub enum GameResult {
+    /// White (player 1) won the game.
     White(WinReason),
+    /// Black (player 2) won the game.
     Black(WinReason),
+    /// The players drew the game.
     #[default]
     Draw,
 }
 
+/// Error returned when something goes wrong during the parsing of a [`GameResult`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ParseGameResultError {
+    /// The game result was not one of the valid and recognized formats.
     Invalid,
 }
 
@@ -214,6 +237,11 @@ impl FromStr for GameResult {
     }
 }
 
+/// A PTN file which is used to document a game of Tak.
+///
+/// It includes tags which have extra information such as the size of the board.
+/// Next it has a sequence of moves with optional comments.
+/// Finally, if the game has ended, it includes the game result after the moves.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct Ptn {
     tags: Vec<Tag>,
@@ -223,6 +251,21 @@ pub struct Ptn {
 }
 
 impl Ptn {
+    /// Create a new [`Ptn`].
+    ///
+    /// - `tags` is a collection of tags. Validity or repeated tags are not checked. If there is a `[TPS "<some valid tps>"]` tag
+    ///   then it will be used for the display of the PTN file. The TPS determines which player starts and what the move number is.
+    /// - `moves` is a collection of moves in the game. Again, validity of the move sequence is not checked.
+    /// - `comments` is a collection of comment groups. Each comment group can contain multiple individual comments.
+    ///   the group at index 0 contains comments about the game as a whole. Each group after that is tied to a move.
+    ///   For example, the 4th ply would have comments at index 4.
+    /// - `result` is the result of the game if it ended.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the comments do not have a length of moves length + 1.
+    /// This is because there is a comment group for each move,
+    /// and also comments for the whole game which are at index 0.
     pub fn new(
         tags: Vec<Tag>,
         moves: Vec<Move>,
@@ -240,19 +283,23 @@ impl Ptn {
 }
 
 impl Ptn {
+    /// Getter for `tags`.
     pub fn tags(&self) -> &[Tag] {
         &self.tags
     }
 
+    /// Getter for `moves`.
     pub fn moves(&self) -> &[Move] {
         &self.moves
     }
 
+    /// Getter for `comments`.
     pub fn comments(&self) -> &[Vec<String>] {
         &self.comments
     }
 
     /// Get the first matching tag's value.
+    /// If the tag is not found [`None`] is returned.
     pub fn get_tag(&self, key: &str) -> Option<&str> {
         for tag in &self.tags {
             if tag.key() == key {
@@ -262,14 +309,20 @@ impl Ptn {
         None
     }
 
+    /// Search for a tag with the key `Site` and return the value.
+    /// If the tag is not found [`None`] is returned.
     pub fn site(&self) -> Option<&str> {
         self.get_tag("Site")
     }
 
+    /// Search for a tag with the key `Event` and return the value.
+    /// If the tag is not found [`None`] is returned.
     pub fn event(&self) -> Option<&str> {
         self.get_tag("Event")
     }
 
+    /// Search for a tag with the key `Date` and return the value, parsed into a [`chrono::NaiveDate`] struct.
+    /// If the tag is not found or parsing fails [`None`] is returned.
     pub fn date(&self) -> Option<NaiveDate> {
         let s = self.get_tag("Date")?;
         let mut split = s.split('.');
@@ -282,6 +335,8 @@ impl Ptn {
         NaiveDate::from_ymd_opt(year, month, day)
     }
 
+    /// Search for a tag with the key `Time` and return the value, parsed into a [`chrono::NaiveTime`] struct.
+    /// If the tag is not found or parsing fails [`None`] is returned.
     pub fn time(&self) -> Option<NaiveTime> {
         let s = self.get_tag("Time")?;
         let mut split = s.split(':');
@@ -294,30 +349,54 @@ impl Ptn {
         NaiveTime::from_hms_opt(hour, min, sec)
     }
 
+    /// Search for a tag with the key `Player1` and return the value.
+    /// This is the name of the player playing as white.
+    /// If the tag is not found [`None`] is returned.
     pub fn player_1(&self) -> Option<&str> {
         self.get_tag("Player1")
     }
 
+    /// Search for a tag with the key `Player2` and return the value.
+    /// This is the name of the player playing as black.
+    /// If the tag is not found [`None`] is returned.
     pub fn player_2(&self) -> Option<&str> {
         self.get_tag("Player2")
     }
 
+    /// Search for a tag with the key `Rating1` and return the value, parsed as an integer.
+    /// This gets the rating of the player playing as white.
+    /// If the tag is not found [`None`] is returned.
     pub fn rating_1(&self) -> Option<i32> {
         self.get_tag("Rating1")?.parse().ok()
     }
 
+    /// Search for a tag with the key `Rating2` and return the value, parsed as an integer.
+    /// This gets the rating of the player playing as black.
+    /// If the tag is not found [`None`] is returned.
     pub fn rating_2(&self) -> Option<i32> {
         self.get_tag("Rating2")?.parse().ok()
     }
 
+    /// Search for a tag with the key `Clock` and return the value.
+    ///
+    /// This is used to tell us the time controls used for the game.
+    /// It is not parsed because a standard format is not specified.
+    /// If the tag is not found [`None`] is returned.
     pub fn clock(&self) -> Option<&str> {
         self.get_tag("Clock")
     }
 
+    /// Search for the tag with the key `Opening` and return the value.
+    /// If the tag is not found [`None`] is returned.
     pub fn opening(&self) -> Option<&str> {
         self.get_tag("Opening")
     }
 
+    /// Get the result of the game.
+    ///
+    /// If the result is already stored in the [`Ptn`] struct then that is returned.
+    /// Otherwise, search for the tag with the key `Result` and return the value, parsed as a [`GameResult`].
+    /// If there is no stored result and tag is not found or parsing of the value fails then [`None`] is returned.
     pub fn result(&self) -> Option<GameResult> {
         if self.result.is_some() {
             return self.result;
@@ -325,14 +404,32 @@ impl Ptn {
         self.get_tag("Result")?.parse().ok()
     }
 
+    /// Search for a tag with the key `Size` and return the value, parsed as an integer.
+    /// This is the size of the board. One of the few mandatory tags for a valid PTN.
+    /// If the tag is not found or parsing fails [`None`] is returned.
     pub fn size(&self) -> Option<usize> {
         self.get_tag("Size")?.parse().ok()
     }
 
+    /// Get the komi of the game as an integer. This rounds fractional komi down.
+    ///
+    /// It works by searching for a tag with the key `Komi`, parsing the value as half-komi,
+    /// and then returning half of that.
+    /// If the tag is not found or parsing fails [`None`] is returned.
     pub fn komi(&self) -> Option<i32> {
         self.half_komi().map(|x| x / 2)
     }
 
+    /// Get the half-komi for a game. Half-komi is twice the komi value.
+    /// It is used because komi can also be fractional when we want to eliminate draws.
+    ///
+    /// Allowed values for komi are in one of these formats:
+    /// - `<integer>`
+    /// - `<integer>.5`
+    /// - `<integer>.0`
+    ///
+    /// This method searches for a tag with the key `Komi`.
+    /// If the tag is not found or parsing fails [`None`] is returned.
     pub fn half_komi(&self) -> Option<i32> {
         let s = self.get_tag("Komi")?;
 
@@ -350,14 +447,20 @@ impl Ptn {
         }
     }
 
+    /// Search for a tag with the key `Flats` and return the value, parsed as an integer.
+    /// If the tag is not found or parsing fails [`None`] is returned.
     pub fn flats(&self) -> Option<u32> {
         self.get_tag("Flats")?.parse().ok()
     }
 
+    /// Search for a tag with the key `Caps` and return the value, parsed as an integer.
+    /// If the tag is not found or parsing fails [`None`] is returned.
     pub fn caps(&self) -> Option<u32> {
         self.get_tag("Caps")?.parse().ok()
     }
 
+    /// Search for a tag with the key `TPS` and return the value, parsed as a [`Tps`] struct.
+    /// If the tag is not found or parsing fails [`None`] is returned.
     pub fn tps(&self) -> Option<Tps> {
         self.get_tag("TPS")?.parse().ok()
     }
@@ -428,12 +531,20 @@ impl Display for Ptn {
     }
 }
 
+/// Error returned when something goes wrong during the parsing of a [`Ptn`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ParsePtnError {
+    /// Wrapper variant for [`ParseTagError`]. Returned if something is wrong with a tag.
     Tag(ParseTagError),
+    /// Wrapper variant for [`ParseMoveError`]. Returned if there is an issue with one of the moves.
     Move(ParseMoveError),
+    /// Returned when the Ptn ends with a number without a dot. This kind of error is not returned
+    /// if there is an issue with the move numbers in the middle of the PTN. Instead that number will parsed as a move,
+    /// and if it is not a valid move, then the `Move` variant of this error will be returned instead.
     IncompleteMoveNum,
+    /// Returned when the PTN ends while still in comment mode. This happens if a comment is opened, but not closed.
     UnclosedComment,
+    /// Returned if there is non-whitespace text after a game result.
     GarbageAfterResult,
 }
 

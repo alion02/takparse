@@ -17,6 +17,14 @@ pub struct Tag {
 
 impl Tag {
     /// Create a new [`Tag`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use takparse::Tag;
+    /// assert_eq!(Tag::new("Hello", "World").to_string(), "[Hello \"World\"]");
+    /// assert_eq!(Tag::new("Size", "6").to_string(), "[Size \"6\"]");
+    /// ```
     pub fn new<A: Into<String>, B: Into<String>>(key: A, value: B) -> Self {
         Self {
             key: key.into(),
@@ -266,6 +274,40 @@ impl Ptn {
     /// Panics if the comments do not have a length of moves length + 1.
     /// This is because there is a comment group for each move,
     /// and also comments for the whole game which are at index 0.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use takparse::{Ptn, ParseMoveError, Tag};
+    /// let ptn = Ptn::new(
+    ///     vec![Tag::new("Size", "6")],
+    ///     vec!["a6".parse()?, "a5".parse()?, "b5".parse()?],
+    ///     vec![vec!["Cool Game".into()], vec![], vec!["The Hug".into()], vec![]],
+    ///     None,
+    /// );
+    /// assert_eq!(ptn.to_string(), "[Size \"6\"]\n\n{Cool Game}\n1. a6 a5 {The Hug}\n2. b5\n");
+    /// # Ok::<(), ParseMoveError>(())
+    /// ```
+    ///
+    /// ```
+    /// # use takparse::{Ptn, ParseMoveError, Tag};
+    /// let ptn = Ptn::new(
+    ///     vec![Tag::new("TPS", r#"2,x5/x6/x6/x4,1,x/x6/x5,1 2 2"#)],
+    ///     vec!["c4".parse()?, "d3".parse()?],
+    ///     vec![vec!["Opposite Corners".into(), "Knight's Move".into()], vec!["Centre Square".into()], vec![]],
+    ///     None,
+    /// );
+    /// assert_eq!(
+    ///     ptn.to_string(),
+    ///     "[TPS \"2,x5/x6/x6/x4,1,x/x6/x5,1 2 2\"]\n\n{Opposite Corners} {Knight's Move}\n2. -- c4 {Centre Square}\n3. d3\n"
+    /// );
+    /// # Ok::<(), ParseMoveError>(())
+    /// ```
+    ///
+    /// ```should_panic
+    /// # use takparse::Ptn;
+    /// Ptn::new(vec![], vec![], vec![], None); // panics because `comments.len() != moves.len() + 1`
+    /// ```
     pub fn new(
         tags: Vec<Tag>,
         moves: Vec<Move>,
@@ -280,9 +322,7 @@ impl Ptn {
             result,
         }
     }
-}
 
-impl Ptn {
     /// Getter for `tags`.
     pub fn tags(&self) -> &[Tag] {
         &self.tags
@@ -300,6 +340,27 @@ impl Ptn {
 
     /// Get the first matching tag's value.
     /// If the tag is not found [`None`] is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use takparse::{Ptn, ParseMoveError, Tag};
+    /// let ptn = Ptn::new(
+    ///     vec![
+    ///         Tag::new("TPS", r#"2,x5/x6/x6/x4,1,x/x6/x5,1 2 2"#),
+    ///         Tag::new("Size", "6"),
+    ///         Tag::new("Size", "5"),
+    ///     ],
+    ///     vec!["c4".parse()?, "d3".parse()?],
+    ///     vec![vec!["Opposite Corners".into(), "Knight's Move".into()], vec!["Centre Square".into()], vec![]],
+    ///     None,
+    /// );
+    ///
+    /// assert_eq!(ptn.get_tag("TPS"),  Some("2,x5/x6/x6/x4,1,x/x6/x5,1 2 2"));
+    /// assert_eq!(ptn.get_tag("Size"), Some("6"));
+    /// assert_eq!(ptn.get_tag("Foo"), None);
+    /// # Ok::<(), ParseMoveError>(())
+    /// ```
     pub fn get_tag(&self, key: &str) -> Option<&str> {
         for tag in &self.tags {
             if tag.key() == key {
@@ -323,6 +384,23 @@ impl Ptn {
 
     /// Search for a tag with the key `Date` and return the value, parsed into a [`chrono::NaiveDate`] struct.
     /// If the tag is not found or parsing fails [`None`] is returned.
+    ///
+    /// The date should be in the format `YYYY.MM.DD`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use takparse::{Ptn, Tag};
+    /// # use chrono::NaiveDate;
+    /// let ptn = Ptn::new(vec![Tag::new("Date", "2022.11.01")], vec![], vec![vec![]], None);
+    /// assert_eq!(ptn.date(), Some(NaiveDate::from_ymd(2022, 11, 01)));
+    ///
+    /// let ptn = Ptn::new(vec![Tag::new("Date", "Invalid Date")], vec![], vec![vec![]], None);
+    /// assert_eq!(ptn.date(), None);
+    ///
+    /// let ptn = Ptn::new(vec![Tag::new("NotDate", "Whatever")], vec![], vec![vec![]], None);
+    /// assert_eq!(ptn.date(), None);
+    /// ```
     pub fn date(&self) -> Option<NaiveDate> {
         let s = self.get_tag("Date")?;
         let mut split = s.split('.');
@@ -337,6 +415,23 @@ impl Ptn {
 
     /// Search for a tag with the key `Time` and return the value, parsed into a [`chrono::NaiveTime`] struct.
     /// If the tag is not found or parsing fails [`None`] is returned.
+    ///
+    /// The time should be in the format `HH:MM:SS`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use takparse::{Ptn, Tag};
+    /// # use chrono::NaiveTime;
+    /// let ptn = Ptn::new(vec![Tag::new("Time", "18:29:30")], vec![], vec![vec![]], None);
+    /// assert_eq!(ptn.time(), Some(NaiveTime::from_hms(18, 29, 30)));
+    ///
+    /// let ptn = Ptn::new(vec![Tag::new("Time", "Invalid Time")], vec![], vec![vec![]], None);
+    /// assert_eq!(ptn.time(), None);
+    ///
+    /// let ptn = Ptn::new(vec![Tag::new("NotTime", "Whatever")], vec![], vec![vec![]], None);
+    /// assert_eq!(ptn.time(), None);
+    /// ```
     pub fn time(&self) -> Option<NaiveTime> {
         let s = self.get_tag("Time")?;
         let mut split = s.split(':');
@@ -397,6 +492,23 @@ impl Ptn {
     /// If the result is already stored in the [`Ptn`] struct then that is returned.
     /// Otherwise, search for the tag with the key `Result` and return the value, parsed as a [`GameResult`].
     /// If there is no stored result and tag is not found or parsing of the value fails then [`None`] is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use takparse::{Ptn, Tag};
+    /// let ptn = Ptn::new(vec![], vec![], vec![vec![]], "F-0".parse().ok());
+    /// assert_eq!(ptn.result(), "F-0".parse().ok());
+    ///
+    /// let ptn = Ptn::new(vec![Tag::new("Result", "0-R")], vec![], vec![vec![]], None);
+    /// assert_eq!(ptn.result(), "0-R".parse().ok());
+    ///
+    /// let ptn = Ptn::new(vec![Tag::new("Result", "0-R")], vec![], vec![vec![]], "F-0".parse().ok());
+    /// assert_eq!(ptn.result(), "F-0".parse().ok());
+    ///
+    /// let ptn = Ptn::new(vec![], vec![], vec![vec![]], None);
+    /// assert_eq!(ptn.result(), None);
+    /// ```
     pub fn result(&self) -> Option<GameResult> {
         if self.result.is_some() {
             return self.result;
@@ -407,6 +519,20 @@ impl Ptn {
     /// Search for a tag with the key `Size` and return the value, parsed as an integer.
     /// This is the size of the board. One of the few mandatory tags for a valid PTN.
     /// If the tag is not found or parsing fails [`None`] is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use takparse::{Ptn, Tag};
+    /// let ptn = Ptn::new(vec![Tag::new("Size", "5")], vec![], vec![vec![]], None);
+    /// assert_eq!(ptn.size(), Some(5));
+    ///
+    /// let ptn = Ptn::new(vec![Tag::new("Size", "Five")], vec![], vec![vec![]], None);
+    /// assert_eq!(ptn.time(), None);
+    ///
+    /// let ptn = Ptn::new(vec![Tag::new("Largeness", "123")], vec![], vec![vec![]], None);
+    /// assert_eq!(ptn.time(), None);
+    /// ```
     pub fn size(&self) -> Option<usize> {
         self.get_tag("Size")?.parse().ok()
     }
@@ -416,6 +542,18 @@ impl Ptn {
     /// It works by searching for a tag with the key `Komi`, parsing the value as half-komi,
     /// and then returning half of that.
     /// If the tag is not found or parsing fails [`None`] is returned.
+    ///
+    /// ```
+    /// # use takparse::{Ptn, Tag};
+    /// let ptn = Ptn::new(vec![Tag::new("Komi", "2")], vec![], vec![vec![]], None);
+    /// assert_eq!(ptn.komi(), Some(2));
+    ///
+    /// let ptn = Ptn::new(vec![Tag::new("Komi", "2.5")], vec![], vec![vec![]], None);
+    /// assert_eq!(ptn.komi(), Some(2));
+    ///
+    /// let ptn = Ptn::new(vec![Tag::new("Komi", "-0.5")], vec![], vec![vec![]], None);
+    /// assert_eq!(ptn.komi(), Some(0));
+    /// ```
     pub fn komi(&self) -> Option<i32> {
         self.half_komi().map(|x| x / 2)
     }
@@ -430,6 +568,20 @@ impl Ptn {
     ///
     /// This method searches for a tag with the key `Komi`.
     /// If the tag is not found or parsing fails [`None`] is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use takparse::{Ptn, Tag};
+    /// let ptn = Ptn::new(vec![Tag::new("Komi", "2")], vec![], vec![vec![]], None);
+    /// assert_eq!(ptn.half_komi(), Some(4));
+    ///
+    /// let ptn = Ptn::new(vec![Tag::new("Komi", "2.5")], vec![], vec![vec![]], None);
+    /// assert_eq!(ptn.half_komi(), Some(5));
+    ///
+    /// let ptn = Ptn::new(vec![Tag::new("Komi", "-0.5")], vec![], vec![vec![]], None);
+    /// assert_eq!(ptn.half_komi(), Some(-1));
+    /// ```
     pub fn half_komi(&self) -> Option<i32> {
         let s = self.get_tag("Komi")?;
 
@@ -449,18 +601,60 @@ impl Ptn {
 
     /// Search for a tag with the key `Flats` and return the value, parsed as an integer.
     /// If the tag is not found or parsing fails [`None`] is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use takparse::{Ptn, Tag};
+    /// let ptn = Ptn::new(vec![Tag::new("Flats", "30")], vec![], vec![vec![]], None);
+    /// assert_eq!(ptn.flats(), Some(30));
+    ///
+    /// let ptn = Ptn::new(vec![Tag::new("Flats", "-123")], vec![], vec![vec![]], None);
+    /// assert_eq!(ptn.flats(), None);
+    ///
+    /// let ptn = Ptn::new(vec![Tag::new("Fs", "1")], vec![], vec![vec![]], None);
+    /// assert_eq!(ptn.flats(), None);
+    /// ```
     pub fn flats(&self) -> Option<u32> {
         self.get_tag("Flats")?.parse().ok()
     }
 
     /// Search for a tag with the key `Caps` and return the value, parsed as an integer.
     /// If the tag is not found or parsing fails [`None`] is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use takparse::{Ptn, Tag};
+    /// let ptn = Ptn::new(vec![Tag::new("Caps", "1")], vec![], vec![vec![]], None);
+    /// assert_eq!(ptn.caps(), Some(1));
+    ///
+    /// let ptn = Ptn::new(vec![Tag::new("Caps", "-1")], vec![], vec![vec![]], None);
+    /// assert_eq!(ptn.caps(), None);
+    ///
+    /// let ptn = Ptn::new(vec![Tag::new("Capstones", "1")], vec![], vec![vec![]], None);
+    /// assert_eq!(ptn.caps(), None);
+    /// ```
     pub fn caps(&self) -> Option<u32> {
         self.get_tag("Caps")?.parse().ok()
     }
 
     /// Search for a tag with the key `TPS` and return the value, parsed as a [`Tps`] struct.
     /// If the tag is not found or parsing fails [`None`] is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use takparse::{Ptn, Tag};
+    /// let ptn = Ptn::new(vec![Tag::new("TPS", "2,x5/x6/x2,2,x3/x3,1,1,x/x6/x5,1 2 3")], vec![], vec![vec![]], None);
+    /// assert_eq!(ptn.tps(), "2,x5/x6/x2,2,x3/x3,1,1,x/x6/x5,1 2 3".parse().ok());
+    ///
+    /// let ptn = Ptn::new(vec![Tag::new("TPS", "invalid")], vec![], vec![vec![]], None);
+    /// assert_eq!(ptn.tps(), None);
+    ///
+    /// let ptn = Ptn::new(vec![Tag::new("TeePeeEs", ":)")], vec![], vec![vec![]], None);
+    /// assert_eq!(ptn.tps(), None);
+    /// ```
     pub fn tps(&self) -> Option<Tps> {
         self.get_tag("TPS")?.parse().ok()
     }

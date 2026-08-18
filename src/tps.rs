@@ -91,7 +91,7 @@ impl Stack {
     /// ```
     pub fn new<I: IntoIterator<Item = Color>>(top: Piece, colors: I) -> Self {
         let colors = Vec::from_iter(colors);
-        assert!(!colors.is_empty());
+        assert_ne!(colors, []);
         Self { top, colors }
     }
 
@@ -182,7 +182,8 @@ pub enum ExtendedSquare {
 }
 
 impl ExtendedSquare {
-    const fn iter(&self) -> Iter {
+    #[allow(clippy::iter_without_into_iter)]
+    const fn iter(&self) -> Iter<'_> {
         Iter::new(self)
     }
 }
@@ -260,7 +261,7 @@ impl<'a> Iterator for Iter<'a> {
     }
 }
 
-impl<'a> ExactSizeIterator for Iter<'a> {
+impl ExactSizeIterator for Iter<'_> {
     fn len(&self) -> usize {
         self.count
     }
@@ -530,7 +531,7 @@ impl FromStr for Tps {
 impl Display for Tps {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         let fmt_row = |row: &Vec<ExtendedSquare>, f: &mut Formatter<'_>| {
-            if let Some(es) = row.get(0) {
+            if let Some(es) = row.first() {
                 es.fmt(f)?;
                 row[1..].iter().try_for_each(|es| write!(f, ",{es}"))
             } else {
@@ -538,7 +539,7 @@ impl Display for Tps {
             }
         };
 
-        if let Some(row) = self.board.get(0) {
+        if let Some(row) = self.board.first() {
             fmt_row(row, f)?;
             self.board[1..].iter().try_for_each(|row| {
                 '/'.fmt(f)?;

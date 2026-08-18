@@ -319,7 +319,7 @@ impl Ptn {
         comments: Vec<Vec<String>>,
         result: Option<GameResult>,
     ) -> Self {
-        assert!(comments.len() == moves.len() + 1);
+        assert_eq!(comments.len(), moves.len() + 1);
         Self {
             tags,
             moves,
@@ -421,7 +421,7 @@ impl Ptn {
         let day = split.next()?.parse().ok()?;
         if split.next().is_some() {
             return None;
-        };
+        }
         NaiveDate::from_ymd_opt(year, month, day)
     }
 
@@ -453,7 +453,7 @@ impl Ptn {
         let sec = split.next()?.parse().ok()?;
         if split.next().is_some() {
             return None;
-        };
+        }
         NaiveTime::from_hms_opt(hour, min, sec)
     }
 
@@ -689,7 +689,7 @@ impl Ptn {
 impl Display for Ptn {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         // Helper function for joining comment groups together.
-        fn format_comments(comments: &Vec<String>) -> String {
+        fn format_comments(comments: &[String]) -> String {
             if comments.is_empty() {
                 String::new()
             } else {
@@ -850,7 +850,7 @@ impl FromStr for Ptn {
                     last_char = Some(c);
                     break;
                 }
-            };
+            }
         }
         // End of string.
         if last_char.is_none() {
@@ -1258,7 +1258,7 @@ mod tests {
 
     #[test]
     fn no_tags_game_result_and_whitespace() {
-        let ptn = r#"a3 a2 a3- b2 d4 {hi} R-0         "#;
+        let ptn = r"a3 a2 a3- b2 d4 {hi} R-0         ";
         let moves = vec!["a3", "a2", "a3-", "b2", "d4"];
         let mut comment_groups: Vec<Vec<String>> = (0..moves.len()).map(|_| Vec::new()).collect();
         comment_groups.push(vec!["hi".into()]);

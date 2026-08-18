@@ -23,20 +23,15 @@ use std::{
 // TODO: serde, tests
 
 /// Enum representing the piece type.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub enum Piece {
     /// Flat stone
+    #[default]
     Flat,
     /// Wall, also known as standing stone
     Wall,
     /// Capstone
     Cap,
-}
-
-impl Default for Piece {
-    fn default() -> Self {
-        Self::Flat
-    }
 }
 
 impl Display for Piece {
